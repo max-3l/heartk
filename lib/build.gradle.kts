@@ -41,4 +41,7 @@ dependencies {
 
     // This dependency adds filtering functionalities
     implementation("uk.me.berndporr:iirj:1.3")
+
+    // This dependency adds convolutions and FFT
+    implementation("edu.princeton.cs:algs4:1.0.3")
 }

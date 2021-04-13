@@ -3,12 +3,13 @@
  */
 package heartk
 
+import heartk.ppg.PPG
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
 class LibraryTest {
     @Test fun testSomeLibraryMethod() {
-        val classUnderTest = Library()
-        assertTrue(classUnderTest.someLibraryMethod(), "someLibraryMethod should return 'true'")
+        val classUnderTest = PPG
+        // (classUnderTest.(), "someLibraryMethod should return 'true'")
     }
 }
