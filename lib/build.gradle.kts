@@ -17,6 +17,7 @@ plugins {
 repositories {
     // Use JCenter for resolving dependencies.
     jcenter()
+    mavenCentral()
 }
 
 dependencies {
@@ -37,4 +38,7 @@ dependencies {
 
     // This dependency is exported to consumers, that is to say found on their compile classpath.
     api("org.apache.commons:commons-math3:3.6.1")
+
+    // This dependency adds filtering functionalities
+    implementation("uk.me.berndporr:iirj:1.3")
 }
