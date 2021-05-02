@@ -2,11 +2,14 @@ package heartk.ppg
 
 import heartk.configuration.Configurator
 import uk.me.berndporr.iirj.Butterworth
+import java.io.File
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.round
+import kotlin.math.sign
 
 object PPG {
     /**
@@ -87,34 +90,40 @@ object PPG {
         f2: Double = 8.0,
         peakWindow: Double = 0.111,
         beatWindow: Double = 0.667,
-        beta: Int = 2
+        beta: Float = 0.02F
     ): BooleanArray {
         var clippedSquaredSignal = signal.map { el -> max(el, 0.0F).pow(2) }.toFloatArray()
         // val ma_peak_kernel = round(peakwindow * sampling_rate).toInt()
 
+        val pString = clippedSquaredSignal.fold("") {
+                current, element -> current + "\n" + element
+        }
+        //println(fString.lines().size)
+        File("C:\\\\Users\\\\maxim\\Desktop\\clippedSquared.txt").writeText(pString)
+
         var peakAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * peakWindow).toInt())
         var beatAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * beatWindow).toInt())
 
-        // Resize arrays so that both have a fixed size
-        if (peakAverages.size != beatAverages.size) {
-            val diff = (abs(peakAverages.size - beatAverages.size)) / 2
-            if (peakAverages.size > beatAverages.size) {
-                peakAverages = peakAverages.slice(diff..(peakAverages.size - diff)).toFloatArray()
-            } else if (peakAverages.size < beatAverages.size) {
-                beatAverages = beatAverages.slice(diff..(beatAverages.size - diff)).toFloatArray()
-            }
-        }
-
-        // Also resize clippedSquaredSignal so that values align properly
-        if (clippedSquaredSignal.size != beatAverages.size) {
-            val diff = (abs(clippedSquaredSignal.size - beatAverages.size)) / 2
-            if (clippedSquaredSignal.size > beatAverages.size) {
-                clippedSquaredSignal =
-                    clippedSquaredSignal.slice(diff..(clippedSquaredSignal.size - diff)).toFloatArray()
-            } else if (clippedSquaredSignal.size < beatAverages.size) {
-                beatAverages = beatAverages.slice(diff..(beatAverages.size - diff)).toFloatArray()
-            }
-        }
+        // // Resize arrays so that both have a fixed size
+        // if (peakAverages.size != beatAverages.size) {
+        //     val diff = (abs(peakAverages.size - beatAverages.size)) / 2
+        //     if (peakAverages.size > beatAverages.size) {
+        //         peakAverages = peakAverages.slice(diff until(peakAverages.size - diff)).toFloatArray()
+        //     } else if (peakAverages.size < beatAverages.size) {
+        //         beatAverages = beatAverages.slice(diff until(beatAverages.size - diff)).toFloatArray()
+        //     }
+        // }
+        //
+        // // Also resize clippedSquaredSignal so that values align properly
+        // if (clippedSquaredSignal.size != beatAverages.size) {
+        //     val diff = (abs(clippedSquaredSignal.size - beatAverages.size)) / 2
+        //     if (clippedSquaredSignal.size > beatAverages.size) {
+        //         clippedSquaredSignal =
+        //             clippedSquaredSignal.slice(diff until(clippedSquaredSignal.size - diff)).toFloatArray()
+        //     } else if (clippedSquaredSignal.size < beatAverages.size) {
+        //         beatAverages = beatAverages.slice(diff until(beatAverages.size - diff)).toFloatArray()
+        //     }
+        // }
 
         if (!((clippedSquaredSignal.size == beatAverages.size) && (beatAverages.size == peakAverages.size)))
             throw Exception("Something went wrong. Windows are not the same size! clippedWindow: ${clippedSquaredSignal.size} peakAverages: ${peakAverages.size} beatAverages: ${beatAverages.size}")
@@ -125,15 +134,23 @@ object PPG {
             return@mapIndexed 0
         }
 
+        val fString = blocksOfInterest.fold("") {
+                current, element -> current + "\n" + (if (element == 0.1F) "1.0" else "0.0")
+        }
+        //println(fString.lines().size)
+        File("C:\\\\Users\\\\maxim\\Desktop\\blocksOfInterest.txt").writeText(fString)
+
+
+
         // array of systolic peaks
         val systolicPeaks = BooleanArray(clippedSquaredSignal.size){ false }
 
         // computes the maximum in blocks of interests wider than the peaksWindow threshold
         val threshold = peakWindow * sampling_rate
         var interestStart = 0
-        for (index in (0..blocksOfInterest.size)) {
+        for (index in (0 until(blocksOfInterest.size))) {
             if (blocksOfInterest[index] == 0) {
-                if ((index - 1) - interestStart > threshold) {
+                if (((index - 1) - interestStart + 1) > threshold) {
                     systolicPeaks[clippedSquaredSignal.sliceMax(interestStart, index)] = true
                 }
                 interestStart = index
@@ -165,7 +182,7 @@ object PPG {
         averaged[0] = signal.sliceAverage(discardSize - discardSize, discardSize + discardSize)
 
         // Use online algorithm
-        for (index in (discardSize + 1)..(signal.size - discardSize)) {
+        for (index in (discardSize + 1) until(signal.size - discardSize)) {
             averaged[index] = averaged[index - 1] +
                     (signal[index] / oddWindowSize) +
                     (signal[index - oddWindowSize] / oddWindowSize)
@@ -185,18 +202,79 @@ object PPG {
      *
      * @return The signal with the moving average
      */
-    fun movingAverage(signal: FloatArray, windowSize: Int): FloatArray {
+    fun movingAverageDiscard(signal: FloatArray, windowSize: Int): FloatArray {
         val oddWindowSize = windowSize + ((windowSize + 1) % 2)
         val discardSize = floor((oddWindowSize / 2.0)).toInt() - 1
         val averaged = FloatArray(signal.size - (2 * discardSize))
 
         // Use slice average for every step
-        for (index in (discardSize..(signal.size - discardSize))) {
-            averaged[index] = signal.sliceAverage(index - discardSize, index + discardSize)
+        for (index in (discardSize until (signal.size - discardSize))) {
+            averaged[index - discardSize] = signal.sliceAverage(index - discardSize, index + discardSize)
         }
         return averaged
     }
 
+    /**
+     * Computing an average over a signal using a moving window.
+     * Reduces the window size on the start and end.
+     *
+     * When the windowSize is even the next odd number is taken
+     * as windowSize.
+     *
+     * @param signal The signal to process the average of.
+     * @param windowSize The window size to be computed.
+     */
+    fun movingAverage(signal: FloatArray, windowSize: Int): FloatArray {
+        val oddWindowSize = windowSize + ((windowSize + 1) % 2)
+        var firstIndex = 0
+        var lastIndex = (oddWindowSize / 2) - 1
+        var currentSum = 0F
+
+        for (index in (0 until (oddWindowSize/2) - 1)) {
+            currentSum += signal[index]
+        }
+
+        val averaged = FloatArray(signal.size)
+        for (index in (signal.indices)) {
+            currentSum += signal[lastIndex]
+            if (firstIndex > 0) currentSum -= signal[firstIndex - 1]
+            averaged[index] = currentSum / (lastIndex - firstIndex + 1)
+            if (lastIndex < (signal.size - 1)) lastIndex++
+            if ((lastIndex - firstIndex) > oddWindowSize) firstIndex++
+        }
+        return averaged
+    }
+
+    /**
+     * Computing an average over a signal using a moving window.
+     * Extends the array to the left and right by windowSize/2 elements
+     * when computing the average to reduce side effects.
+     *
+     * @param signal The signal to process the average of.
+     * @param windowSize The window size to be computed.
+     */
+    fun movingAverageExtend(signal: FloatArray, windowSize: Int): FloatArray {
+        val oddWindowSize = windowSize + ((windowSize + 1) % 2)
+        val halfLength = ceil(oddWindowSize / 2F).toInt()
+        val extensionLeft = FloatArray(halfLength) { signal[0] }
+        val extensionRight = FloatArray(halfLength) { signal[1] }
+        val extendedSignal = extensionLeft + signal + extensionRight
+        var lastIndex = oddWindowSize - 1
+        var currentSum = 0F
+
+        for (index in (0 until oddWindowSize - 1)) {
+            currentSum += signal[index]
+        }
+
+        val averaged = FloatArray(signal.size)
+        for ((firstIndex, index) in (halfLength until signal.size + halfLength).withIndex()) {
+            currentSum += extendedSignal[lastIndex]
+            if (firstIndex > 0) currentSum -= extendedSignal[firstIndex - 1]
+            averaged[index] = currentSum / (lastIndex - firstIndex + 1)
+            lastIndex++
+        }
+        return averaged.sliceArray(halfLength until signal.size + halfLength)
+    }
     /**
      * Computes the average over a slice of an float array.
      *
@@ -209,41 +287,10 @@ object PPG {
      */
     fun FloatArray.sliceAverage(start: Int, end: Int): Float {
         var sum = 0.0F
-        for (index in start..(end + 1)) {
+        for (index in start until(end + 1)) {
             sum += this[index]
         }
         return sum / (end + 1 - start)
-    }
-
-    /**
-     * Smooths the signal by applying a linear convolution with a averaged rectangle window.
-     *
-     * @param signal The signal to be smoothed.
-     * @param size The size of the convolution.
-     */
-    fun smoothSignal(signal: FloatArray, size: Int) {
-        val window = boxCarWindow(size)
-        val w = window.map { it / size }.toFloatArray()
-        val extendedSignal = mutableListOf<Float>()
-
-        extendedSignal.addAll(Array(size) { signal.first() })
-        extendedSignal.addAll(signal.asIterable())
-        extendedSignal.addAll(Array(size) { signal.last() })
-
-        convolveSignal(signal, w)
-        TODO("Call convolutional smoothing")
-    }
-
-    fun boxCarWindow(size: Int): FloatArray {
-        return FloatArray(size) { 1F }
-    }
-
-    /**
-     * Discrete linear convolution of two signals.
-     *
-     */
-    fun convolveSignal(signal1: FloatArray, signal2: FloatArray) {
-        TODO("Implement linear convolution using two one-dimensional signals")
     }
 
     /**
@@ -255,7 +302,7 @@ object PPG {
      */
     fun FloatArray.sliceMax(start: Int, end: Int): Int {
         var maxIndex = start
-        for (index in (start..end + 1)) {
+        for (index in (start..end)) {
             if (this[index] > this[maxIndex]) maxIndex = index
         }
         return maxIndex

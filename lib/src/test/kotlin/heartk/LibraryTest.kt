@@ -4,12 +4,55 @@
 package heartk
 
 import heartk.ppg.PPG
+import org.junit.Assert.assertArrayEquals
+import org.junit.Before
+import java.io.File
+import java.nio.charset.Charset
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class LibraryTest {
-    @Test fun testSomeLibraryMethod() {
-        val classUnderTest = PPG
-        // (classUnderTest.(), "someLibraryMethod should return 'true'")
+class PPGTest {
+    var timestamps: MutableList<Long> = mutableListOf()
+    var ppg: MutableList<Float> = mutableListOf()
+    var peaks: MutableList<Boolean> = mutableListOf()
+
+    @Before
+    fun loadPPGSamples(){
+        val reader = PPGTest::class.java.classLoader.getResourceAsStream("ppg_sample.csv")!!.bufferedReader()
+        reader.readLine()
+        reader.forEachLine { line ->
+            val splittedLine = line.split(",")
+            this.timestamps.add(splittedLine[0].toLong())
+            this.ppg.add(splittedLine[1].toFloat())
+            this.peaks.add(splittedLine[2].toBoolean())
+        }
+    }
+    @Test fun shouldLoadCSV() {
+        assertTrue(this.ppg.size > 0, "read ppg signal should be longer than 0")
+        println(this.ppg.last())
+    }
+
+    @Test fun shouldFindPeaks() {
+        val output = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        println((output.sumBy{ if (it) 1 else 0 }))
+        println(this.timestamps[0])
+        println(this.ppg.size)
+        println(output.size)
+        val fString = output.fold("") {
+                current, element -> current + "\n" + (if (element) "1.0" else "0.0")
+        }
+        //println(fString.lines().size)
+        File("C:\\\\Users\\\\maxim\\Desktop\\out.txt").writeText(fString)
+    }
+
+    @Test fun shouldComputeAverages() {
+        val originalArray = FloatArray(100) { 1F }
+        assertArrayEquals(PPG.movingAverage(originalArray, 10).toTypedArray(), originalArray.toTypedArray())
+    }
+
+    @Test fun shouldComputeAveragesExtended() {
+        val originalArray = FloatArray(100) { 1F }
+        assertEquals(PPG.movingAverageExtend(originalArray, 10), originalArray)
     }
 }
