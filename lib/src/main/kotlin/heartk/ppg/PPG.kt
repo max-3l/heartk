@@ -14,6 +14,7 @@ import kotlin.math.sign
 object PPG {
     /**
      * Cleans signal and detects RR-Peaks on a PPG signal.
+     * Uses double Butterworth filter (normal + reversed) to account for introduced delay.
      *
      * @param signal The PPG signal as FloatArray
      * @param sampling_rate The sampling rate of the PPG signal as Double
@@ -21,8 +22,8 @@ object PPG {
      * @return a FloatArray containing the Peaks
      */
     fun processSignal(signal: FloatArray, sampling_rate: Double): BooleanArray {
-        val filteredSignal = filterSignal(signal, sampling_rate)
-        return detectPeaks(filteredSignal,sampling_rate)
+        val filteredSignal = filterSignal(filterSignal(signal, sampling_rate).reversedArray(), sampling_rate).reversedArray()
+        return detectPeaks(filteredSignal, sampling_rate)
     }
 
     /**
@@ -74,11 +75,9 @@ object PPG {
      * doi:10.1371/journal.pone.0076585.
      *
      * All tune-able parameters are specified as keyword arguments. `signal` must be the bandpass-filtered raw PPG
-     * with a lowcut of .5 Hz, a highcut of 8 Hz.
+     * with a lowcut of 0.5 Hz, a highcut of 8 Hz.
      *
      * @param signal The PPG signal to find peaks from
-     * @param f1 Lower frequency threshold of the frequency band
-     * @param f2 Upper frequency threshold of the frequency band
      * @param peakWindow Window size of the first moving average (ms)
      * @param beatWindow Window size of the second moving average (ms)
      * @param beta Offset of the beat
@@ -86,61 +85,20 @@ object PPG {
     fun detectPeaks(
         signal: FloatArray,
         sampling_rate: Double,
-        f1: Double = 0.5,
-        f2: Double = 8.0,
         peakWindow: Double = 0.111,
         beatWindow: Double = 0.667,
         beta: Float = 0.02F
     ): BooleanArray {
         var clippedSquaredSignal = signal.map { el -> max(el, 0.0F).pow(2) }.toFloatArray()
-        // val ma_peak_kernel = round(peakwindow * sampling_rate).toInt()
-
-        val pString = clippedSquaredSignal.fold("") {
-                current, element -> current + "\n" + element
-        }
-        //println(fString.lines().size)
-        File("C:\\\\Users\\\\maxim\\Desktop\\clippedSquared.txt").writeText(pString)
 
         var peakAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * peakWindow).toInt())
         var beatAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * beatWindow).toInt())
-
-        // // Resize arrays so that both have a fixed size
-        // if (peakAverages.size != beatAverages.size) {
-        //     val diff = (abs(peakAverages.size - beatAverages.size)) / 2
-        //     if (peakAverages.size > beatAverages.size) {
-        //         peakAverages = peakAverages.slice(diff until(peakAverages.size - diff)).toFloatArray()
-        //     } else if (peakAverages.size < beatAverages.size) {
-        //         beatAverages = beatAverages.slice(diff until(beatAverages.size - diff)).toFloatArray()
-        //     }
-        // }
-        //
-        // // Also resize clippedSquaredSignal so that values align properly
-        // if (clippedSquaredSignal.size != beatAverages.size) {
-        //     val diff = (abs(clippedSquaredSignal.size - beatAverages.size)) / 2
-        //     if (clippedSquaredSignal.size > beatAverages.size) {
-        //         clippedSquaredSignal =
-        //             clippedSquaredSignal.slice(diff until(clippedSquaredSignal.size - diff)).toFloatArray()
-        //     } else if (clippedSquaredSignal.size < beatAverages.size) {
-        //         beatAverages = beatAverages.slice(diff until(beatAverages.size - diff)).toFloatArray()
-        //     }
-        // }
-
-        if (!((clippedSquaredSignal.size == beatAverages.size) && (beatAverages.size == peakAverages.size)))
-            throw Exception("Something went wrong. Windows are not the same size! clippedWindow: ${clippedSquaredSignal.size} peakAverages: ${peakAverages.size} beatAverages: ${beatAverages.size}")
 
         val offsetLevel: Double = clippedSquaredSignal.average() * beta
         val blocksOfInterest = peakAverages.mapIndexed { index: Int, value: Float ->
             if (value > beatAverages[index] + offsetLevel) return@mapIndexed 0.1F
             return@mapIndexed 0
         }
-
-        val fString = blocksOfInterest.fold("") {
-                current, element -> current + "\n" + (if (element == 0.1F) "1.0" else "0.0")
-        }
-        //println(fString.lines().size)
-        File("C:\\\\Users\\\\maxim\\Desktop\\blocksOfInterest.txt").writeText(fString)
-
-
 
         // array of systolic peaks
         val systolicPeaks = BooleanArray(clippedSquaredSignal.size){ false }
@@ -275,6 +233,7 @@ object PPG {
         }
         return averaged.sliceArray(halfLength until signal.size + halfLength)
     }
+    
     /**
      * Computes the average over a slice of an float array.
      *
