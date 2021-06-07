@@ -44,4 +44,10 @@ dependencies {
 
     // This dependency adds convolutions and FFT
     implementation("edu.princeton.cs:algs4:1.0.3")
+
+    // This dependency adds interpolations
+    // https://mvnrepository.com/artifact/com.opengamma.strata/strata-market
+    implementation(group="com.opengamma.strata", name="strata-market", version="2.10.1")
+
+    // implementation(group="org.nd4j", name="nd4j-api", version="1.0.0-M1")
 }

@@ -1,10 +1,12 @@
 package heartk
 
+import heartk.hrv.HrvHr
 import heartk.ppg.PPG
+import heartk.hrv.HRV
+import heartk.hrv.HrvFrequency
 import org.junit.Assert.assertArrayEquals
 import org.junit.Before
 import java.io.File
-import java.nio.charset.Charset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -14,6 +16,14 @@ class PPGTest {
     var timestamps: MutableList<Long> = mutableListOf()
     var ppg: MutableList<Float> = mutableListOf()
     var peaks: MutableList<Boolean> = mutableListOf()
+    private val withOutput = true
+    private val outDir = File("./output/")
+
+    fun writeOutput(name: String, content: String) {
+        if (withOutput) {
+            File(outDir, name).writeText(content)
+        }
+    }
 
     @Before
     fun loadPPGSamples(){
@@ -24,6 +34,13 @@ class PPGTest {
             this.timestamps.add(splittedLine[0].toLong())
             this.ppg.add(splittedLine[1].toFloat())
             this.peaks.add(splittedLine[2].toBoolean())
+        }
+    }
+
+    @Before
+    fun initializeDirectories(){
+        if (withOutput) {
+            this.outDir.mkdirs()
         }
     }
 
@@ -48,6 +65,66 @@ class PPGTest {
         }
         println("Time needed to process signal: ${(processingSum / 1000) / 1e6} ms")
         assertTrue(processingSum / 1000 < 1e8.toLong())
+        writeOutput("Peaks.csv", fString)
+    }
+
+    @Test fun shouldComputeHR() {
+        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val hrSignal = HrvHr.computeHR(peaksSignal, 1000.0)
+        val fString = hrSignal.fold("") {
+                current, element -> current + "\n" + element
+        }
+        writeOutput("HR.csv", fString)
+    }
+
+    @Test fun shouldComputeRRIntervals() {
+        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
+        val fString = rri.fold("") {
+                current, element -> current + "\n" + element
+        }
+        writeOutput("RRI.csv", fString)
+    }
+
+    @Test fun shouldOutputCorrectBins() {
+        val bins = doubleArrayOf(
+            0.0 ,   0.5,   1.0 ,   1.5,   2.0 ,   2.5,   3.0 ,   3.5,   4.0 ,
+            4.5,   5.0 ,   5.5,   6.0 ,   6.5,   7.0 ,   7.5,   8.0 ,   8.5,
+            9.0 ,   9.5,  10.0 ,  10.5,  11.0 ,  11.5,  12.0 ,  12.5,  13.0 ,
+            13.5,  14.0 ,  14.5,  15.0 ,  15.5,  16.0 ,  16.5,  17.0 ,  17.5,
+            18.0 ,  18.5,  19.0 ,  19.5,  20.0 ,  20.5,  21.0 ,  21.5,  22.0 ,
+            22.5,  23.0 ,  23.5,  24.0 ,  24.5, -25.0 , -24.5, -24.0 , -23.5,
+            -23.0 , -22.5, -22.0 , -21.5, -21.0 , -20.5, -20.0 , -19.5, -19.0 ,
+            -18.5, -18.0 , -17.5, -17.0 , -16.5, -16.0 , -15.5, -15.0 , -14.5,
+            -14.0 , -13.5, -13.0 , -12.5, -12.0 , -11.5, -11.0 , -10.5, -10.0 ,
+            -9.5,  -9.0 ,  -8.5,  -8.0 ,  -7.5,  -7.0 ,  -6.5,  -6.0 ,  -5.5,
+            -5.0 ,  -4.5,  -4.0 ,  -3.5,  -3.0 ,  -2.5,  -2.0 ,  -1.5,  -1.0 ,
+            -0.5)
+       assertArrayEquals(bins.toTypedArray(), HrvFrequency.fftFrequencies(100, 50.0).toTypedArray())
+    }
+
+    @Test fun shouldComputePSDUsingWelch() {
+        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
+        val (frequencies, power) = HrvFrequency.psdWelch(rri, 1000.0, 10000, normalize=false, returnOneSided = true)
+        val psd = power.fold("welch\n") {
+                current, element -> current + element + "\n"
+        }
+        val freqs = frequencies.fold("freqs\n") {
+                current, element -> current + element + "\n"
+        }
+        writeOutput("welch.csv", psd)
+        writeOutput("freqs.csv", freqs)
+    }
+
+    @Test fun shouldComputeFrequencyFeatures() {
+        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
+        val frequencyFeatures = HrvFrequency.getFeatures(rri, 1000.0)
+        val freqFeatures = frequencyFeatures.entries.fold("feature, value\n") {
+                current, element -> current + element.key + ", " + element.value + "\n"
+        }
+        writeOutput("freqFeatures.csv", freqFeatures)
     }
 
     @Test fun shouldComputeAverages() {
