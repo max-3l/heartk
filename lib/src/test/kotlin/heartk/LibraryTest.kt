@@ -124,6 +124,11 @@ class PPGTest {
     @Test fun shouldComputeFrequencyFeatures() {
         val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
         val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true, "quadratic")
+        // val rri = mutableListOf<Double>()
+        // this::class.java.classLoader.getResourceAsStream("rriscipy.csv")!!.bufferedReader()
+        //     .forEachLine {
+        //         rri.add(it.toDouble())
+        //     }
         val frequencyFeatures = HrvFrequency.getFeatures(rri, 1000.0)
         val freqFeatures = frequencyFeatures.entries.fold("feature, value\n") {
                 current, element -> current + element.key + ", " + element.value + "\n"

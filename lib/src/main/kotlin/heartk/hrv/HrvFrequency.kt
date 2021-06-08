@@ -1,11 +1,13 @@
 package heartk.hrv
 
+import heartk.FFT.FFT
 import heartk.utils.where
 import org.apache.commons.math3.complex.Complex
 import org.apache.commons.math3.transform.DftNormalization
 import org.apache.commons.math3.transform.FastFourierTransformer
 import org.apache.commons.math3.transform.TransformType
 import org.apache.commons.math3.util.MathUtils.TWO_PI
+import java.util.Arrays
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.max
@@ -42,7 +44,7 @@ object HrvFrequency {
             frequencies.where { frequencyBands["vhf"]!!.first <= it && frequencyBands["vhf"]!!.second > it }.toList()
         val vhfPower = trapezoidal(frequencies.slice(vhfIndices), power.slice(vhfIndices))
 
-        val totalPower = power.sum()
+        val totalPower = ulfPower + vlfPower + lfPower + hfPower + vhfPower
         val features = mutableMapOf<String, Double>()
         features["LF"] = lfPower
         features["HF"] = hfPower
@@ -182,24 +184,25 @@ object HrvFrequency {
 
         val paddedWindows = appliedWindow.map {
             // Pad to a power of 2. The algorithm requires an input with a length of the power of two.
-            padZerosToPowerOfTwo(
+            //padZerosToPowerOfTwo(
             // Pad with zeros if min fftSize is not reached
                 it.toMutableList().padEnd(fftSize - windowSize)
-            )
+            //)
         }
 
         // Compute the fft of the window
         var ffts = paddedWindows.map { window ->
-            FastFourierTransformer(DftNormalization.STANDARD)
-                 .transform(window, TransformType.FORWARD)
+            //FastFourierTransformer(DftNormalization.STANDARD)
+             //    .transform(window, TransformType.FORWARD)
                  // Compute the squared magnitude and scale. We only take the real part as we have a real valued signal.
-                 .map { it.conjugate().multiply(it).multiply(scale).real }
-            // val imagArray = DoubleArray(paddedWindows.firstOrNull()?.size ?: 0)
-            // FFT.transform(window.toDoubleArray(), imagArray)
-            // window.mapIndexed { index, element ->
-            //     val comp = Complex(element, imagArray[index])
-            //     comp.conjugate().multiply(comp).multiply(scale).real
-            // }
+             //    .map { it.conjugate().multiply(it).multiply(scale).real }
+            val realArray = window.toDoubleArray().copyOf()
+            val imagArray = DoubleArray(paddedWindows.firstOrNull()?.size ?: 0)
+            FFT.transform(realArray, imagArray)
+            realArray.mapIndexed { index, element ->
+                 val comp = Complex(element, imagArray[index])
+                 comp.conjugate().multiply(comp).multiply(scale).real
+            }
         }
 
         // If one sided discard the second side and double the result
@@ -328,7 +331,7 @@ object HrvFrequency {
     private fun trapezoidal(x: List<Double>, y: List<Double>): Double {
         return x.indices.fold(0.0) { current, index ->
             if (index != x.size - 1) {
-                return@fold current + x[index + 1].minus(x[index]).times(y[index].plus(y[index + 1].div(2.0)))
+                return@fold current + ((x[index + 1] - x[index]) * ((y[index] + y[index + 1]) / 2.0))
             }
             return@fold current
         }
