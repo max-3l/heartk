@@ -4,9 +4,13 @@ import heartk.hrv.HrvHr
 import heartk.ppg.PPG
 import heartk.hrv.HRV
 import heartk.hrv.HrvFrequency
+import heartk.hrv.HrvNonlinear
+import heartk.utils.std
 import org.junit.Assert.assertArrayEquals
 import org.junit.Before
 import java.io.File
+import java.util.Arrays
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -106,7 +110,7 @@ class PPGTest {
     @Test fun shouldComputePSDUsingWelch() {
         val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
         val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
-        val (frequencies, power) = HrvFrequency.psdWelch(rri, 1000.0, 10000, normalize=false, returnOneSided = true)
+        val (frequencies, power) = HrvFrequency.psdWelch(rri, 1000.0, 10000, normalize=false, returnOneSided = true, windowType = "hannCSV")
         val psd = power.fold("welch\n") {
                 current, element -> current + element + "\n"
         }
@@ -119,7 +123,7 @@ class PPGTest {
 
     @Test fun shouldComputeFrequencyFeatures() {
         val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
-        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
+        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true, "quadratic")
         val frequencyFeatures = HrvFrequency.getFeatures(rri, 1000.0)
         val freqFeatures = frequencyFeatures.entries.fold("feature, value\n") {
                 current, element -> current + element.key + ", " + element.value + "\n"
@@ -127,8 +131,41 @@ class PPGTest {
         writeOutput("freqFeatures.csv", freqFeatures)
     }
 
+    @Test fun shouldComputeNonLinearFeatures() {
+        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, false)
+        val nonLinearFeatures = HrvNonlinear.getFeatures(rri)
+        val nonLinearFeaturesString = nonLinearFeatures.entries.fold("feature, value\n") {
+                current, element -> current + element.key + ", " + element.value + "\n"
+        }
+        writeOutput("nonLinearFeatures.csv", nonLinearFeaturesString)
+    }
+
     @Test fun shouldComputeAverages() {
         val originalArray = FloatArray(100) { 1F }
         assertArrayEquals(PPG.movingAverage(originalArray, 10).toTypedArray(), originalArray.toTypedArray())
+    }
+
+    @Test fun shouldComputeCorrectStd() {
+        val array = DoubleArray(10) { it.plus(1.0) }
+        assertEquals(2.8722813232690143, std(array, 0))
+        assertEquals(3.0276503540974917, std(array, 1))
+        assertEquals(3.2113081446662823, std(array, 2))
+    }
+
+    @Test fun shouldReturnHannWindow() {
+        val tolerance = 1e-8
+        val window = HrvFrequency.hannWindow(20)
+        val expectedWindow = doubleArrayOf(
+            0.0       , 0.02709138, 0.10542975, 0.22652592, 0.37725726,
+            0.54128967, 0.70084771, 0.83864079, 0.93973688, 0.99318065,
+            0.99318065, 0.93973688, 0.83864079, 0.70084771, 0.54128967,
+            0.37725726, 0.22652592, 0.10542975, 0.02709138, 0.0
+        )
+        window.forEachIndexed() { index, element ->
+            assertTrue(abs(element - expectedWindow[index]) <= tolerance,
+                "Window at [$index] should be ${expectedWindow[index]} but was $element. The difference of ${abs(element - expectedWindow[index])} is greater" +
+                        " than the allowed tolerance of $tolerance" )
+        }
     }
 }

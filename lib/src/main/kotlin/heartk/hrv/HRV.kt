@@ -59,11 +59,11 @@ public object HRV {
         return output + allFeatures
     }
 
-    fun getRRIntervals(peaks: BooleanArray, samplingRate: Double = 1000.0, interpolate: Boolean = false): DoubleArray {
+    fun getRRIntervals(peaks: BooleanArray, samplingRate: Double = 1000.0, interpolate: Boolean = false, interpolationMethod: String = "monotonCubic"): DoubleArray {
         val peaksIndices = peaks.map { if (it) 1.0 else 0.0 }.toDoubleArray().where { it == 1.0 }
-        val rri = peaksIndices.diff().map { it / (samplingRate * 1000) }.toDoubleArray()
+        val rri = peaksIndices.diff().map { it / (samplingRate / 1000) }.toDoubleArray()
         if (!interpolate) return rri
         return interpolateSignal(peaksIndices.slice(IntRange(1, peaksIndices.size - 1)).map { it.toDouble() }
-            .toDoubleArray(), rri, peaksIndices.last())
+            .toDoubleArray(), rri, peaksIndices.last(), interpolationMethod)
     }
 }

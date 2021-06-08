@@ -14,7 +14,7 @@ import kotlin.math.sqrt
 
 /**
  * Computes nonlinear HRV features.
- * The implementation is very similiar to neurokit2.
+ * The implementation is an adaptation of neurokit2.
  * [https://github.com/neuropsychology/NeuroKit]
  */
 object HrvNonlinear {
@@ -54,8 +54,8 @@ object HrvNonlinear {
         output["GI"] = (nominatorGI / denominatorGI) * 100
 
         // SI (Slope Index)
-        val denominatorSI = SAll.sum()
-        val nominatorSI = SAll.slice(decelerateIndices.toList()).sum()
+        val denominatorSI = thetaAll.sum()
+        val nominatorSI = thetaAll.slice(decelerateIndices.toList()).sum()
         output["SI"] = (nominatorSI / denominatorSI) * 100
 
         // PI (Porta's Index)
@@ -87,14 +87,14 @@ object HrvNonlinear {
 
         // Total asymmetry
         val sdnnd = sqrt(0.5 * (sd1d.pow(2) + sd2d.pow(2)))
-        val sdnna = sqrt(0.5 * (sd1a.pow(2) + sd2d.pow(2)))
+        val sdnna = sqrt(0.5 * (sd1a.pow(2) + sd2a.pow(2)))
         val sdnn = sqrt(sdnnd.pow(2) + sdnna.pow(2))
         output["Cd"] = (sdnnd / sdnn).pow(2)
         output["Ca"] = (sdnna / sdnn).pow(2)
         output["SDNNd"] = sdnnd
-        output["SDNDDa"] = sdnna
+        output["SDNNa"] = sdnna
 
-        val x1 = diff.map { it / sqrt2 }
+        val x1 = diff.map { it.times(-1) / sqrt2 }
         val x2 = sum.map { it / sqrt2 }
         val sd1 = std(x1.toDoubleArray(), 1)
         val sd2 = std(x2.toDoubleArray(), 1)

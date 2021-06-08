@@ -3,6 +3,7 @@ package heartk.utils
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolators
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolators
 import org.apache.commons.math3.stat.descriptive.moment.Variance
+import kotlin.math.pow
 import kotlin.math.sign
 import kotlin.math.sqrt
 
@@ -112,7 +113,15 @@ fun std(array: FloatArray, degreesOfFreedom: Int = 0): Float {
 
 fun std(array: DoubleArray, degreesOfFreedom: Int = 0): Double {
     if (degreesOfFreedom > array.size) throw IllegalArgumentException("Degrees of freedom larger than sample size.")
-    return sqrt(Variance().evaluate(array).div(array.size - degreesOfFreedom))
+    return sqrt(variance(array, degreesOfFreedom))
+}
+
+fun variance(array: DoubleArray, degreesOfFreedom: Int = 0): Double {
+    if (degreesOfFreedom > array.size) throw IllegalArgumentException("Degrees of freedom larger than sample size.")
+    val mean = array.average()
+    return array.map {
+        it.minus(mean).pow(2)
+    }.sum().div(array.size - degreesOfFreedom)
 }
 
 fun FloatArray.toDoubleArray(): DoubleArray =
@@ -123,13 +132,13 @@ fun DoubleArray.toFloatArray(): FloatArray =
 
 fun DoubleArray.diff(): DoubleArray =
     this.foldIndexed(mutableListOf<Double>()) { index, current, element ->
-        if (index != this.size) current.add(this[index + 1] - element)
+        if (index != this.size - 1) current.add(this[index + 1] - element)
         current
     }.toDoubleArray()
 
 fun FloatArray.diff(): FloatArray =
     this.foldIndexed(mutableListOf<Float>()) { index, current, element ->
-        if (index != this.size) current.add(this[index + 1] - element)
+        if (index != this.size - 1) current.add(this[index + 1] - element)
         current
     }.toFloatArray()
 
@@ -156,14 +165,26 @@ fun LongArray.diff(): LongArray =
  * @param length The length of the signal that should be interpolated
  * @return An interpolated signal of the required length. The signal gets
  */
-fun interpolateSignal(x: DoubleArray, y: DoubleArray, length: Int): DoubleArray {
-    val pchip = CurveInterpolators.PCHIP
-    val curveExtrapolator = CurveExtrapolators.LINEAR
-    val interoplator = pchip.bind(
-        com.opengamma.strata.collect.array.DoubleArray.copyOf(x),
-        com.opengamma.strata.collect.array.DoubleArray.copyOf(y),
-        curveExtrapolator,
-        curveExtrapolator
-    )
-    return DoubleArray(length) { index -> interoplator.interpolate(index.toDouble()) }
+fun interpolateSignal(x: DoubleArray, y: DoubleArray, length: Int, interpolationMethod: String = "monotonCubic"): DoubleArray {
+    if (interpolationMethod == "monotonCubic") {
+        val pchip = CurveInterpolators.PCHIP
+        val curveExtrapolator = CurveExtrapolators.LINEAR
+        val interoplator = pchip.bind(
+            com.opengamma.strata.collect.array.DoubleArray.copyOf(x),
+            com.opengamma.strata.collect.array.DoubleArray.copyOf(y),
+            curveExtrapolator,
+            curveExtrapolator
+        )
+        return DoubleArray(length) { index -> interoplator.interpolate(index.toDouble()) }
+    }  else if (interpolationMethod == "quadratic") {
+        val interpolator = CurveInterpolators.DOUBLE_QUADRATIC
+        val extrapolator = CurveExtrapolators.FLAT
+        val interpolation = interpolator.bind(
+            com.opengamma.strata.collect.array.DoubleArray.copyOf(x),
+            com.opengamma.strata.collect.array.DoubleArray.copyOf(y),
+            extrapolator,
+            extrapolator
+        )
+        return DoubleArray(length) { index -> interpolation.interpolate(index.toDouble()) }
+    } else throw IllegalArgumentException("Unknown interpolation method." )
 }

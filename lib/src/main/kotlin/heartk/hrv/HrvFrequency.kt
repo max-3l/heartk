@@ -10,7 +10,6 @@ import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.pow
-import kotlin.math.sign
 
 object HrvFrequency {
     fun getFeatures(rrIntervals: DoubleArray, samplingRate: Double): Map<String, Double> {
@@ -23,19 +22,24 @@ object HrvFrequency {
         )
         val (frequencies, power) = psd(rrIntervals, frequencyBands.values, samplingRate)
 
-        val ulfIndices = frequencies.where { frequencyBands["ulf"]!!.first <= it && frequencyBands["ulf"]!!.second > it }.toList()
+        val ulfIndices =
+            frequencies.where { frequencyBands["ulf"]!!.first <= it && frequencyBands["ulf"]!!.second > it }.toList()
         val ulfPower = trapezoidal(frequencies.slice(ulfIndices), power.slice(ulfIndices))
 
-        val vlfIndices = frequencies.where { frequencyBands["vlf"]!!.first <= it && frequencyBands["vlf"]!!.second > it }.toList()
+        val vlfIndices =
+            frequencies.where { frequencyBands["vlf"]!!.first <= it && frequencyBands["vlf"]!!.second > it }.toList()
         val vlfPower = trapezoidal(frequencies.slice(vlfIndices), power.slice(vlfIndices))
 
-        val lfIndices = frequencies.where { frequencyBands["lf"]!!.first <= it && frequencyBands["lf"]!!.second > it }.toList()
+        val lfIndices =
+            frequencies.where { frequencyBands["lf"]!!.first <= it && frequencyBands["lf"]!!.second > it }.toList()
         val lfPower = trapezoidal(frequencies.slice(lfIndices), power.slice(lfIndices))
 
-        val hfIndices = frequencies.where { frequencyBands["hf"]!!.first <= it && frequencyBands["hf"]!!.second > it }.toList()
+        val hfIndices =
+            frequencies.where { frequencyBands["hf"]!!.first <= it && frequencyBands["hf"]!!.second > it }.toList()
         val hfPower = trapezoidal(frequencies.slice(hfIndices), power.slice(hfIndices))
 
-        val vhfIndices = frequencies.where { frequencyBands["vhf"]!!.first <= it && frequencyBands["vhf"]!!.second > it }.toList()
+        val vhfIndices =
+            frequencies.where { frequencyBands["vhf"]!!.first <= it && frequencyBands["vhf"]!!.second > it }.toList()
         val vhfPower = trapezoidal(frequencies.slice(vhfIndices), power.slice(vhfIndices))
 
         val totalPower = power.sum()
@@ -130,6 +134,14 @@ object HrvFrequency {
             "hann" -> {
                 hannWindow(windowSize)
             }
+            "hannCSV" -> {
+                val window = mutableListOf<Double>()
+                HrvFrequency::class.java.classLoader.getResourceAsStream("window10000.csv")!!.bufferedReader()
+                    .forEachLine {
+                        window.add(it.toDouble())
+                    }
+                window.toDoubleArray()
+            }
             else -> {
                 throw NotImplementedError("The specified window type is not implemented.")
             }
@@ -160,17 +172,34 @@ object HrvFrequency {
             else -> throw IllegalArgumentException("Argument scaling must be one of 'density' or 'spectral'.")
         }
 
+        // Create windows of the signal.
+        val appliedWindow = mutableSignal.windowed(windowSize, stepSize, partialWindows = false) { window ->
+            window.mapIndexed { index, value ->
+                // Apply the window function to the signal
+                transformWindow[index] * value
+            }
+        }
+
+        val paddedWindows = appliedWindow.map {
+            // Pad to a power of 2. The algorithm requires an input with a length of the power of two.
+            padZerosToPowerOfTwo(
+            // Pad with zeros if min fftSize is not reached
+                it.toMutableList().padEnd(fftSize - windowSize)
+            )
+        }
+
         // Compute the fft of the window
-        var ffts = mutableSignal.windowed(windowSize, stepSize, partialWindows = false) { window ->
+        var ffts = paddedWindows.map { window ->
             FastFourierTransformer(DftNormalization.STANDARD)
-                // Pad to a power of 2. The algorithm requires an input with a length of the power of two.
-                .transform(padZerosToPowerOfTwo(window.mapIndexed { index, value ->
-                    // Apply the window function to the signal
-                    transformWindow[index] * value
-                // Pad with zeros if min fftSize is not reached
-                }.toMutableList().padEnd(fftSize - windowSize)), TransformType.FORWARD)
-                // Compute the squared magnitude and scale. We only take the real part as we have a real valued signal.
-                .map { it.conjugate().multiply(it).multiply(scale).real }
+                 .transform(window, TransformType.FORWARD)
+                 // Compute the squared magnitude and scale. We only take the real part as we have a real valued signal.
+                 .map { it.conjugate().multiply(it).multiply(scale).real }
+            // val imagArray = DoubleArray(paddedWindows.firstOrNull()?.size ?: 0)
+            // FFT.transform(window.toDoubleArray(), imagArray)
+            // window.mapIndexed { index, element ->
+            //     val comp = Complex(element, imagArray[index])
+            //     comp.conjugate().multiply(comp).multiply(scale).real
+            // }
         }
 
         // If one sided discard the second side and double the result
@@ -185,7 +214,7 @@ object HrvFrequency {
                 return@map slice.mapIndexed sliceMapIndexed@{ sliceIndex, sliceElement ->
                     // Do not double the first value as it is the DC power.
                     // Do not double the last value when the size is odd as it is the unmatched nyquist frequency point.
-                    if (sliceIndex == 0 || ((sliceIndex == element.size - 1) && (ffts.size % 2 == 0))) return@sliceMapIndexed sliceElement
+                    if (sliceIndex == 0 || ((sliceIndex == element.size - 1) && (ffts.first().size % 2 == 0))) return@sliceMapIndexed sliceElement
                     return@sliceMapIndexed sliceElement.times(2)
                 }
 
@@ -251,8 +280,9 @@ object HrvFrequency {
      * @return The frequencies associated with the returned buckets.
      */
     fun rfftFrequencies(windowSize: Int, samplingRate: Double): DoubleArray {
+        val factor = samplingRate / ((windowSize - 1)*2)
         return DoubleArray(windowSize) {
-            it.plus(1).div(2).div(windowSize.div(samplingRate))
+            it * factor
         }
     }
 
@@ -304,6 +334,9 @@ object HrvFrequency {
         }
     }
 
-    private fun hannWindow(length: Int): DoubleArray =
-        DoubleArray(length) { 0.5 * (1.0 - cos(TWO_PI * it / (length - 1f))) }
+    fun hannWindow(length: Int): DoubleArray {
+        return DoubleArray(length) {
+            0.5 - 0.5 * cos((TWO_PI * it) / (length - 1))
+        }
+    }
 }
