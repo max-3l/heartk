@@ -5,6 +5,7 @@ import heartk.ppg.PPG
 import heartk.hrv.HRV
 import heartk.hrv.HrvFrequency
 import heartk.hrv.HrvNonlinear
+import heartk.hrv.HrvTime
 import heartk.utils.std
 import org.junit.Assert.assertArrayEquals
 import org.junit.Before
@@ -18,7 +19,7 @@ import kotlin.math.abs
 
 class PPGTest {
     var timestamps: MutableList<Long> = mutableListOf()
-    var ppg: MutableList<Float> = mutableListOf()
+    var ppg: MutableList<Double> = mutableListOf()
     var peaks: MutableList<Boolean> = mutableListOf()
     private val withOutput = true
     private val outDir = File("./output/")
@@ -31,13 +32,13 @@ class PPGTest {
 
     @Before
     fun loadPPGSamples(){
-        val reader = PPGTest::class.java.classLoader.getResourceAsStream("ppg_sample.csv")!!.bufferedReader()
+        val reader = PPGTest::class.java.classLoader.getResourceAsStream("ppg_sample_51_2.csv")!!.bufferedReader()
         reader.readLine()
         reader.forEachLine { line ->
             val splittedLine = line.split(",")
-            this.timestamps.add(splittedLine[0].toLong())
-            this.ppg.add(splittedLine[1].toFloat())
-            this.peaks.add(splittedLine[2].toBoolean())
+            this.timestamps.add(splittedLine[0].toDouble().toLong())
+            this.ppg.add(splittedLine[1].toDouble())
+            // this.peaks.add(splittedLine[2].toBoolean())
         }
     }
 
@@ -53,19 +54,13 @@ class PPGTest {
     }
 
     @Test fun shouldFindPeaks() {
-        val output = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
-        // Allow to find peaks with an error of +-1
-        assertTrue(abs(155 - output.sumBy{ if (it) 1 else 0 }) < 2)
-    }
-
-    @Test fun shoulFindPeaksFast() {
-        val ppgSignal = this.ppg.toFloatArray()
-        var processingSum = 0L
-        for (i in (0 .. 1000)) {
-            val before = System.nanoTime()
-            PPG.processSignal(ppgSignal, 1000.0)
-            val after = System.nanoTime()
-            processingSum += after - before
+        val output = PPG.processSignal(this.ppg.toDoubleArray(), 51.2)
+        println((output.sumBy{ if (it) 1 else 0 }))
+        println(this.timestamps[0])
+        println(this.ppg.size)
+        println(output.size)
+        val fString = output.fold("") {
+                current, element -> current + "\n" + (if (element) "1.0" else "0.0")
         }
         println("Time needed to process signal: ${(processingSum / 1000) / 1e6} ms")
         assertTrue(processingSum / 1000 < 1e8.toLong())
@@ -73,7 +68,7 @@ class PPGTest {
     }
 
     @Test fun shouldComputeHR() {
-        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 1000.0)
         val hrSignal = HrvHr.computeHR(peaksSignal, 1000.0)
         val fString = hrSignal.fold("") {
                 current, element -> current + "\n" + element
@@ -82,12 +77,29 @@ class PPGTest {
     }
 
     @Test fun shouldComputeRRIntervals() {
-        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 1000.0)
         val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
         val fString = rri.fold("") {
                 current, element -> current + "\n" + element
         }
         writeOutput("RRI.csv", fString)
+    }
+
+    @Test fun shouldInterpolateSignal() {
+        // val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val peaks = mutableListOf<Boolean>()
+        File("./output/Peaks.csv").bufferedReader()
+            .forEachLine {
+                peaks.add(it == "1.0")
+            }
+
+        val rri = HRV.getRRIntervals(peaks.toBooleanArray(), 1000.0, true, "b-spline-2-b")
+        val rriScipy = mutableListOf<Double>()
+        this::class.java.classLoader.getResourceAsStream("rriscipy.csv")!!.bufferedReader()
+            .forEachLine {
+                rriScipy.add(it.toDouble())
+            }
+        assertArrayEquals(rriScipy.toTypedArray(), rri.toTypedArray())
     }
 
     @Test fun shouldOutputCorrectBins() {
@@ -108,9 +120,22 @@ class PPGTest {
     }
 
     @Test fun shouldComputePSDUsingWelch() {
-        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
-        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
-        val (frequencies, power) = HrvFrequency.psdWelch(rri, 1000.0, 10000, normalize=false, returnOneSided = true, windowType = "hannCSV")
+        // val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 1000.0)
+        // val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true)
+        val rri = mutableListOf<Double>()
+        this::class.java.classLoader.getResourceAsStream("rriscipy.csv")!!.bufferedReader()
+            .forEachLine {
+                rri.add(it.toDouble())
+            }
+        val (frequencies, power) = HrvFrequency.psdWelch(
+            rri.toDoubleArray(),
+            1000.0,
+            10000,
+            fftSize=10000,
+            normalize=false,
+            returnOneSided = true,
+            windowType = "hann"
+        )
         val psd = power.fold("welch\n") {
                 current, element -> current + element + "\n"
         }
@@ -122,14 +147,14 @@ class PPGTest {
     }
 
     @Test fun shouldComputeFrequencyFeatures() {
-        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
-        val rri = HRV.getRRIntervals(peaksSignal, 1000.0, true, "quadratic")
+        val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 51.2)
+        val rri = HRV.getRRIntervals(peaksSignal, 51.2, true, "quadratic")
         // val rri = mutableListOf<Double>()
         // this::class.java.classLoader.getResourceAsStream("rriscipy.csv")!!.bufferedReader()
         //     .forEachLine {
         //         rri.add(it.toDouble())
         //     }
-        val frequencyFeatures = HrvFrequency.getFeatures(rri, 1000.0)
+        val frequencyFeatures = HrvFrequency.getFeatures(rri, 51.2)
         val freqFeatures = frequencyFeatures.entries.fold("feature, value\n") {
                 current, element -> current + element.key + ", " + element.value + "\n"
         }
@@ -137,7 +162,7 @@ class PPGTest {
     }
 
     @Test fun shouldComputeNonLinearFeatures() {
-        val peaksSignal = PPG.processSignal(this.ppg.toFloatArray(), 1000.0)
+        val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 1000.0)
         val rri = HRV.getRRIntervals(peaksSignal, 1000.0, false)
         val nonLinearFeatures = HrvNonlinear.getFeatures(rri)
         val nonLinearFeaturesString = nonLinearFeatures.entries.fold("feature, value\n") {
@@ -147,7 +172,7 @@ class PPGTest {
     }
 
     @Test fun shouldComputeAverages() {
-        val originalArray = FloatArray(100) { 1F }
+        val originalArray = DoubleArray(100) { 1.0 }
         assertArrayEquals(PPG.movingAverage(originalArray, 10).toTypedArray(), originalArray.toTypedArray())
     }
 
@@ -172,5 +197,23 @@ class PPGTest {
                 "Window at [$index] should be ${expectedWindow[index]} but was $element. The difference of ${abs(element - expectedWindow[index])} is greater" +
                         " than the allowed tolerance of $tolerance" )
         }
+    }
+
+    @Test fun generateWindow() {
+        val window = HrvFrequency.hannWindow(10000)
+        val win = window.fold("window\n") {
+                current, element -> current + element + "\n"
+        }
+        writeOutput("hannWindow10000.csv", win)
+    }
+
+    @Test fun shouldComputeTimeFeatures() {
+        val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 51.2)
+        val rri = HRV.getRRIntervals(peaksSignal, 51.2, false)
+        val timeFeatures = HrvTime.getFeatures(rri)
+        val timeFeaturesString = timeFeatures.entries.fold("feature, value\n") {
+                current, element -> current + element.key + ", " + element.value + "\n"
+        }
+        writeOutput("timeFeatures.csv", timeFeaturesString)
     }
 }

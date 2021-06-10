@@ -2,7 +2,7 @@ package heartk.utils
 
 import com.opengamma.strata.market.curve.interpolator.CurveExtrapolators
 import com.opengamma.strata.market.curve.interpolator.CurveInterpolators
-import org.apache.commons.math3.stat.descriptive.moment.Variance
+import umontreal.ssj.functionfit.BSpline
 import kotlin.math.pow
 import kotlin.math.sign
 import kotlin.math.sqrt
@@ -165,7 +165,12 @@ fun LongArray.diff(): LongArray =
  * @param length The length of the signal that should be interpolated
  * @return An interpolated signal of the required length. The signal gets
  */
-fun interpolateSignal(x: DoubleArray, y: DoubleArray, length: Int, interpolationMethod: String = "monotonCubic"): DoubleArray {
+fun interpolateSignal(
+    x: DoubleArray,
+    y: DoubleArray,
+    length: Int,
+    interpolationMethod: String = "monotonCubic"
+): DoubleArray {
     if (interpolationMethod == "monotonCubic") {
         val pchip = CurveInterpolators.PCHIP
         val curveExtrapolator = CurveExtrapolators.LINEAR
@@ -176,7 +181,7 @@ fun interpolateSignal(x: DoubleArray, y: DoubleArray, length: Int, interpolation
             curveExtrapolator
         )
         return DoubleArray(length) { index -> interoplator.interpolate(index.toDouble()) }
-    }  else if (interpolationMethod == "quadratic") {
+    } else if (interpolationMethod == "quadratic") {
         val interpolator = CurveInterpolators.DOUBLE_QUADRATIC
         val extrapolator = CurveExtrapolators.FLAT
         val interpolation = interpolator.bind(
@@ -186,5 +191,19 @@ fun interpolateSignal(x: DoubleArray, y: DoubleArray, length: Int, interpolation
             extrapolator
         )
         return DoubleArray(length) { index -> interpolation.interpolate(index.toDouble()) }
-    } else throw IllegalArgumentException("Unknown interpolation method." )
+    } else if (interpolationMethod == "b-spline-2") {
+        val interpolator = BSpline.createInterpBSpline(x.copyOf(), y.copyOf(), 2)
+        val maxX = x.max() ?: throw Error("x must have an element.")
+        val minX = x.min() ?: throw Error("y must have an element.")
+        return DoubleArray(length) { index ->
+            when {
+                index <= minX -> y.first()
+                index >= maxX -> y.last()
+                else -> interpolator.evaluate(index.toDouble())
+            }
+        }
+    } else if (interpolationMethod == "b-spline-2-b") {
+        val interpolation = QuadraticSplineInterpolation(x, y)
+        return DoubleArray(length) { index -> interpolation.interpolate(index.toDouble()) }
+    } else throw IllegalArgumentException("Unknown interpolation method.")
 }

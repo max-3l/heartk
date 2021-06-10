@@ -2,24 +2,22 @@ package heartk.ppg
 
 import heartk.configuration.Configurator
 import uk.me.berndporr.iirj.Butterworth
-import java.io.File
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.round
-import kotlin.math.sign
 
 object PPG {
     /**
      * Cleans signal and detects RR-Peaks on a PPG signal.
      * Uses double Butterworth filter (normal + reversed) to account for introduced delay.
      *
-     * @param signal The PPG signal as FloatArray
+     * @param signal The PPG signal as DoubleArray
      * @param sampling_rate The sampling rate of the PPG signal as Double
      *
-     * @return a FloatArray containing the Peaks
+     * @return a DoubleArray containing the Peaks
      */
     fun processSignal(signal: FloatArray, sampling_rate: Double): BooleanArray {
         val filteredSignal = filterSignal(filterSignal(signal, sampling_rate).reversedArray(), sampling_rate).reversedArray()
@@ -34,7 +32,7 @@ object PPG {
      *
      * @return The filtered signal
      */
-    fun filterSignal(signal: FloatArray, sampling_rate: Double): FloatArray {
+    fun filterSignal(signal: DoubleArray, sampling_rate: Double): DoubleArray {
         val order = 3
         val filter = Butterworth()
         val (freqs, type) = Configurator.signalFilterSanitize(
@@ -66,7 +64,7 @@ object PPG {
                 )
             }
         }
-        return signal.map { filter.filter(it.toDouble()).toFloat() }.toFloatArray()
+        return signal.map { filter.filter(it) }.toDoubleArray()
     }
 
     /**
@@ -83,11 +81,11 @@ object PPG {
      * @param beta Offset of the beat
      */
     fun detectPeaks(
-        signal: FloatArray,
+        signal: DoubleArray,
         sampling_rate: Double,
         peakWindow: Double = 0.111,
         beatWindow: Double = 0.667,
-        beta: Float = 0.02F
+        beta: Double = 0.02
     ): BooleanArray {
         var clippedSquaredSignal = signal.map { el -> max(el, 0.0F).pow(2) }.toFloatArray()
 
@@ -95,18 +93,18 @@ object PPG {
         var beatAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * beatWindow).toInt())
 
         val offsetLevel: Double = clippedSquaredSignal.average() * beta
-        val blocksOfInterest = peakAverages.mapIndexed { index: Int, value: Float ->
+        val blocksOfInterest = peakAverages.mapIndexed { index: Int, value: Double ->
             if (value > beatAverages[index] + offsetLevel) return@mapIndexed 0.1F
             return@mapIndexed 0
         }
 
         // array of systolic peaks
-        val systolicPeaks = BooleanArray(clippedSquaredSignal.size){ false }
+        val systolicPeaks = BooleanArray(clippedSquaredSignal.size) { false }
 
         // computes the maximum in blocks of interests wider than the peaksWindow threshold
         val threshold = peakWindow * sampling_rate
         var interestStart = 0
-        for (index in (0 until(blocksOfInterest.size))) {
+        for (index in (0 until (blocksOfInterest.size))) {
             if (blocksOfInterest[index] == 0) {
                 if (((index - 1) - interestStart + 1) > threshold) {
                     systolicPeaks[clippedSquaredSignal.sliceMax(interestStart, index)] = true
@@ -131,16 +129,16 @@ object PPG {
      *
      * @return The signal with the moving average
      */
-    fun movingAverageOnline(signal: FloatArray, windowSize: Int): FloatArray {
+    fun movingAverageOnline(signal: DoubleArray, windowSize: Int): DoubleArray {
         val oddWindowSize = windowSize + ((windowSize + 1) % 2)
         val discardSize = floor((oddWindowSize / 2.0)).toInt() - 1
-        val averaged = FloatArray(signal.size - (2 * discardSize))
+        val averaged = DoubleArray(signal.size - (2 * discardSize))
 
         // Compute first average
         averaged[0] = signal.sliceAverage(discardSize - discardSize, discardSize + discardSize)
 
         // Use online algorithm
-        for (index in (discardSize + 1) until(signal.size - discardSize)) {
+        for (index in (discardSize + 1) until (signal.size - discardSize)) {
             averaged[index] = averaged[index - 1] +
                     (signal[index] / oddWindowSize) +
                     (signal[index - oddWindowSize] / oddWindowSize)
@@ -160,10 +158,10 @@ object PPG {
      *
      * @return The signal with the moving average
      */
-    fun movingAverageDiscard(signal: FloatArray, windowSize: Int): FloatArray {
+    fun movingAverageDiscard(signal: DoubleArray, windowSize: Int): DoubleArray {
         val oddWindowSize = windowSize + ((windowSize + 1) % 2)
         val discardSize = floor((oddWindowSize / 2.0)).toInt() - 1
-        val averaged = FloatArray(signal.size - (2 * discardSize))
+        val averaged = DoubleArray(signal.size - (2 * discardSize))
 
         // Use slice average for every step
         for (index in (discardSize until (signal.size - discardSize))) {
@@ -182,17 +180,17 @@ object PPG {
      * @param signal The signal to process the average of.
      * @param windowSize The window size to be computed.
      */
-    fun movingAverage(signal: FloatArray, windowSize: Int): FloatArray {
+    fun movingAverage(signal: DoubleArray, windowSize: Int): DoubleArray {
         val oddWindowSize = windowSize + ((windowSize + 1) % 2)
         var firstIndex = 0
         var lastIndex = (oddWindowSize / 2) - 1
-        var currentSum = 0F
+        var currentSum = 0.0
 
-        for (index in (0 until (oddWindowSize/2) - 1)) {
+        for (index in (0 until (oddWindowSize / 2) - 1)) {
             currentSum += signal[index]
         }
 
-        val averaged = FloatArray(signal.size)
+        val averaged = DoubleArray(signal.size)
         for (index in (signal.indices)) {
             currentSum += signal[lastIndex]
             if (firstIndex > 0) currentSum -= signal[firstIndex - 1]
@@ -211,20 +209,20 @@ object PPG {
      * @param signal The signal to process the average of.
      * @param windowSize The window size to be computed.
      */
-    fun movingAverageExtend(signal: FloatArray, windowSize: Int): FloatArray {
+    fun movingAverageExtend(signal: DoubleArray, windowSize: Int): DoubleArray {
         val oddWindowSize = windowSize + ((windowSize + 1) % 2)
-        val halfLength = ceil(oddWindowSize / 2F).toInt()
-        val extensionLeft = FloatArray(halfLength) { signal[0] }
-        val extensionRight = FloatArray(halfLength) { signal[1] }
+        val halfLength = ceil(oddWindowSize / 2.0).toInt()
+        val extensionLeft = DoubleArray(halfLength) { signal[0] }
+        val extensionRight = DoubleArray(halfLength) { signal[1] }
         val extendedSignal = extensionLeft + signal + extensionRight
         var lastIndex = oddWindowSize - 1
-        var currentSum = 0F
+        var currentSum = 0.0
 
         for (index in (0 until oddWindowSize - 1)) {
             currentSum += signal[index]
         }
 
-        val averaged = FloatArray(signal.size)
+        val averaged = DoubleArray(signal.size)
         for ((firstIndex, index) in (halfLength until signal.size + halfLength).withIndex()) {
             currentSum += extendedSignal[lastIndex]
             if (firstIndex > 0) currentSum -= extendedSignal[firstIndex - 1]
@@ -233,9 +231,9 @@ object PPG {
         }
         return averaged.sliceArray(halfLength until signal.size + halfLength)
     }
-    
+
     /**
-     * Computes the average over a slice of an float array.
+     * Computes the average over a slice of an Double array.
      *
      * The end index is **included**.
      *
@@ -244,9 +242,9 @@ object PPG {
      *
      * @return The average of the slice.
      */
-    fun FloatArray.sliceAverage(start: Int, end: Int): Float {
-        var sum = 0.0F
-        for (index in start until(end + 1)) {
+    fun DoubleArray.sliceAverage(start: Int, end: Int): Double {
+        var sum = 0.0
+        for (index in start until (end + 1)) {
             sum += this[index]
         }
         return sum / (end + 1 - start)
@@ -259,7 +257,7 @@ object PPG {
      * @param end The end index of the slice (inclusive).
      * @return The index of the maximum element between the start index and the end index.
      */
-    fun FloatArray.sliceMax(start: Int, end: Int): Int {
+    fun DoubleArray.sliceMax(start: Int, end: Int): Int {
         var maxIndex = start
         for (index in (start..end)) {
             if (this[index] > this[maxIndex]) maxIndex = index

@@ -339,7 +339,7 @@ object HrvFrequency {
 
     fun hannWindow(length: Int): DoubleArray {
         return DoubleArray(length) {
-            0.5 - 0.5 * cos((TWO_PI * it) / (length - 1))
+            0.5 - 0.5 * cos((TWO_PI * it) / (length))
         }
     }
 }
