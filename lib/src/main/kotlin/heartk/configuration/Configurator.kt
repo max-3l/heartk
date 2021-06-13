@@ -6,12 +6,14 @@ package heartk.configuration
 object Configurator {
 
     /**
-     * Sanitizes the parameters for the butterworth filter
+     * Sanitizes the parameters for the butterworth filter.
      *
-     * The sampling rate should be lower than double the highcut
+     * The sampling rate should be lower than double the highcut.
      *
-     * Reimplementation of neurokits _signal_filter_sanitize method
-     * All interlectual properties belong to neurokit2
+     * Reimplementation of neurokits _signal_filter_sanitize method.
+     * All intellectual properties belong to neurokit2.
+     *
+     * [https://github.com/neuropsychology/NeuroKit]
      *
      * @param lowcut
      * @param highcut

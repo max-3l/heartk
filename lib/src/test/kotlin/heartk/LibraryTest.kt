@@ -62,8 +62,6 @@ class PPGTest {
         val fString = output.fold("") {
                 current, element -> current + "\n" + (if (element) "1.0" else "0.0")
         }
-        println("Time needed to process signal: ${(processingSum / 1000) / 1e6} ms")
-        assertTrue(processingSum / 1000 < 1e8.toLong())
         writeOutput("Peaks.csv", fString)
     }
 
@@ -155,7 +153,8 @@ class PPGTest {
         //         rri.add(it.toDouble())
         //     }
         val frequencyFeatures = HrvFrequency.getFeatures(rri, 51.2)
-        val freqFeatures = frequencyFeatures.entries.fold("feature, value\n") {
+        val freqMap = frequencyFeatures.asMap()
+        val freqFeatures = freqMap.entries.fold("feature, value\n") {
                 current, element -> current + element.key + ", " + element.value + "\n"
         }
         writeOutput("freqFeatures.csv", freqFeatures)
@@ -165,7 +164,7 @@ class PPGTest {
         val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 1000.0)
         val rri = HRV.getRRIntervals(peaksSignal, 1000.0, false)
         val nonLinearFeatures = HrvNonlinear.getFeatures(rri)
-        val nonLinearFeaturesString = nonLinearFeatures.entries.fold("feature, value\n") {
+        val nonLinearFeaturesString = nonLinearFeatures.asMap().entries.fold("feature, value\n") {
                 current, element -> current + element.key + ", " + element.value + "\n"
         }
         writeOutput("nonLinearFeatures.csv", nonLinearFeaturesString)
@@ -211,7 +210,7 @@ class PPGTest {
         val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 51.2)
         val rri = HRV.getRRIntervals(peaksSignal, 51.2, false)
         val timeFeatures = HrvTime.getFeatures(rri)
-        val timeFeaturesString = timeFeatures.entries.fold("feature, value\n") {
+        val timeFeaturesString = timeFeatures.asMap().entries.fold("feature, value\n") {
                 current, element -> current + element.key + ", " + element.value + "\n"
         }
         writeOutput("timeFeatures.csv", timeFeaturesString)

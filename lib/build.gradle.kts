@@ -45,7 +45,13 @@ dependencies {
     // This dependency adds convolutions and FFT
     implementation("edu.princeton.cs:algs4:1.0.3")
 
+    // B Spline Interpolation
+    implementation(group="ca.umontreal.iro.simul", name="ssj", version="3.3.1")
+
     // This dependency adds interpolations
     // https://mvnrepository.com/artifact/com.opengamma.strata/strata-market
     implementation(group="com.opengamma.strata", name="strata-market", version="2.10.1")
+
+    // Convert object to map
+    implementation("com.google.code.gson:gson:2.8.7")
 }
