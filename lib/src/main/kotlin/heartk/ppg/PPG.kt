@@ -9,6 +9,16 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.round
 
+/**
+ * Computes peaks from an PPG signal.
+ * The implementation is an adaptation of neurokit2
+ * and uses an algorithm from Elgandi et al.
+ *
+ * [https://github.com/neuropsychology/NeuroKit]
+ *
+ * @see processSignal
+ * @see detectPeaks
+ */
 object PPG {
     /**
      * Cleans signal and detects RR-Peaks on a PPG signal.
@@ -19,7 +29,7 @@ object PPG {
      *
      * @return a DoubleArray containing the Peaks
      */
-    fun processSignal(signal: FloatArray, sampling_rate: Double): BooleanArray {
+    fun processSignal(signal: DoubleArray, sampling_rate: Double): BooleanArray {
         val filteredSignal = filterSignal(filterSignal(signal, sampling_rate).reversedArray(), sampling_rate).reversedArray()
         return detectPeaks(filteredSignal, sampling_rate)
     }
@@ -87,14 +97,14 @@ object PPG {
         beatWindow: Double = 0.667,
         beta: Double = 0.02
     ): BooleanArray {
-        var clippedSquaredSignal = signal.map { el -> max(el, 0.0F).pow(2) }.toFloatArray()
+        var clippedSquaredSignal = signal.map { el -> max(el, 0.0).pow(2) }.toDoubleArray()
 
         var peakAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * peakWindow).toInt())
         var beatAverages = movingAverage(clippedSquaredSignal, round(sampling_rate * beatWindow).toInt())
 
         val offsetLevel: Double = clippedSquaredSignal.average() * beta
         val blocksOfInterest = peakAverages.mapIndexed { index: Int, value: Double ->
-            if (value > beatAverages[index] + offsetLevel) return@mapIndexed 0.1F
+            if (value > beatAverages[index] + offsetLevel) return@mapIndexed 0.1
             return@mapIndexed 0
         }
 

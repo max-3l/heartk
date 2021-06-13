@@ -5,7 +5,13 @@ import org.apache.commons.math3.linear.MatrixUtils
 import java.lang.IllegalArgumentException
 import kotlin.math.pow
 
-class QuadraticSplineInterpolation {
+/**
+ * This class computes a quadratic spline interpolation using the given control points.
+ *
+ * TODO: It is currently not working.
+ *
+ */
+internal class QuadraticSplineInterpolation {
     private var coefficients: DoubleArray
     private lateinit var points: List<Pair<Double, Double>>
 

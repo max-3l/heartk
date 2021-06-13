@@ -18,7 +18,6 @@ repositories {
     // Use JCenter for resolving dependencies.
     jcenter()
     mavenCentral()
-    maven("https://repo.kotlin.link")
 }
 
 dependencies {
@@ -49,10 +48,4 @@ dependencies {
     // This dependency adds interpolations
     // https://mvnrepository.com/artifact/com.opengamma.strata/strata-market
     implementation(group="com.opengamma.strata", name="strata-market", version="2.10.1")
-
-    // implementation(group="org.nd4j", name="nd4j-api", version="1.0.0-M1")
-    // B Spline Interpolation
-    implementation(group="ca.umontreal.iro.simul", name="ssj", version="3.3.1")
-    implementation("com.github.haifengl:smile-kotlin:2.6.0")
-    implementation(group="com.github.virtuald", name="curvesapi", version="1.06")
 }

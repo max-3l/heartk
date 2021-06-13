@@ -1,6 +1,6 @@
 package heartk.eda
 
-object CVX {
+internal object CVX {
     fun solve(
         y: FloatArray,
         delta: Float,

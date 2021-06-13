@@ -9,6 +9,11 @@ import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+/**
+ * Computes time HRV features.
+ * The implementation is an adaptation of neurokit2.
+ * [https://github.com/neuropsychology/NeuroKit]
+ */
 object HrvTime {
 
     /**
@@ -18,32 +23,31 @@ object HrvTime {
      * interpolated signal.
      * @return A map containing the computed features.
      */
-    public fun getFeatures(rrIntervals: DoubleArray): Map<String, Double> {
+    public fun getFeatures(rrIntervals: DoubleArray, featuresObject: HRVFeatures = HRVFeatures()): HRVFeatures {
         val diff = rrIntervals.diff()
-        val output = mutableMapOf<String, Double>()
 
-        output["RMSSD"] = sqrt(diff.map { it.pow(2) }.average())
-        output["MeanNN"] = rrIntervals.average()
-        output["SDNN"] = std(rrIntervals, 1)
-        output["SDSD"] = std(diff, 1)
+        featuresObject.RMSSD = sqrt(diff.map { it.pow(2) }.average())
+        featuresObject.MeanNN = rrIntervals.average()
+        featuresObject.SDNN = std(rrIntervals, 1)
+        featuresObject.SDSD = std(diff, 1)
 
-        output["CVNN"] = output["SDNN"]!! / output["MeanNN"]!!
-        output["CVSD"] = output["RMSSD"]!! / output["MeanNN"]!!
+        featuresObject.CVNN = featuresObject.SDNN!! / featuresObject.MeanNN!!
+        featuresObject.CVSD = featuresObject.RMSSD!! / featuresObject.MeanNN!!
 
-        output["MedianNN"] = Median().evaluate(rrIntervals)
-        output["MadNN"] = Median().evaluate(rrIntervals.map { abs(it - output["MedianNN"]!!) }.toDoubleArray()) * 1.4826
-        output["MCVNN"] = output["MadNN"]!! / output["MedianNN"]!!
+        featuresObject.MedianNN = Median().evaluate(rrIntervals)
+        featuresObject.MadNN = Median().evaluate(rrIntervals.map { abs(it - featuresObject.MedianNN!!) }.toDoubleArray()) * 1.4826
+        featuresObject.MCVNN = featuresObject.MadNN!! / featuresObject.MedianNN!!
 
         val ds = DescriptiveStatistics(rrIntervals)
-        output["IQR"] = ds.getPercentile(75.0) - ds.getPercentile(25.0)
+        featuresObject.IQR = ds.getPercentile(75.0) - ds.getPercentile(25.0)
 
         val nn50 = diff.map { abs(it) }.toDoubleArray().where { it > 50 }.size
         val nn20 = diff.map { abs(it) }.toDoubleArray().where { it > 20 }.size
 
-        output["pNN50"] = nn50.toDouble() / rrIntervals.size * 100
-        output["pNN20"] = nn20.toDouble() / rrIntervals.size * 100
+        featuresObject.pNN50 = nn50.toDouble() / rrIntervals.size * 100
+        featuresObject.pNN20 = nn20.toDouble() / rrIntervals.size * 100
 
         // TODO: TINN and HTI
-        return output
+        return featuresObject
     }
 }

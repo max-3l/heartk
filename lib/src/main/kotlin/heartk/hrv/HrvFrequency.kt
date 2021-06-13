@@ -13,8 +13,26 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.pow
 
+/**
+ * Computes frequency HRV features.
+ * The implementation is an adaptation of neurokit2.
+ * [https://github.com/neuropsychology/NeuroKit]
+ */
 object HrvFrequency {
-    fun getFeatures(rrIntervals: DoubleArray, samplingRate: Double): Map<String, Double> {
+    /**
+     * Computes frequency HRV features.
+     * The implementation is an adaptation of neurokit2.
+     * [https://github.com/neuropsychology/NeuroKit]
+     *
+     * @param rrIntervals The rr intervals of a heart rate signal. This must be a signal of
+     * rr Intervals at the given sampling rate. This can be archieved by interpolating the
+     * rr Intervals using the indices of the corresponding peaks as positional values.
+     * @param samplingRate The sampling rate of the signal.
+     * @param featuresObject The object to store the computed features in. If none is specified a new one
+     * is created.
+     * @return The feature object with the new features.
+     */
+    fun getFeatures(rrIntervals: DoubleArray, samplingRate: Double, featuresObject: HRVFeatures = HRVFeatures()): HRVFeatures {
         val frequencyBands = mapOf(
             "ulf" to Pair(0.0, 0.0033),
             "vlf" to Pair(0.0033, 0.04),
@@ -45,19 +63,38 @@ object HrvFrequency {
         val vhfPower = trapezoidal(frequencies.slice(vhfIndices), power.slice(vhfIndices))
 
         val totalPower = ulfPower + vlfPower + lfPower + hfPower + vhfPower
-        val features = mutableMapOf<String, Double>()
-        features["LF"] = lfPower
-        features["HF"] = hfPower
-        features["ULF"] = ulfPower
-        features["VLF"] = vlfPower
-        features["VHF"] = vhfPower
-        features["LFHF"] = lfPower / hfPower
-        features["LFn"] = lfPower / totalPower
-        features["HFn"] = hfPower / totalPower
-        features["LnHF"] = ln(hfPower)
-        return features
+        featuresObject.LF = lfPower
+        featuresObject.HF = hfPower
+        featuresObject.ULF = ulfPower
+        featuresObject.VLF = vlfPower
+        featuresObject.VHF = vhfPower
+        featuresObject.LFHF = lfPower / hfPower
+        featuresObject.LFn = lfPower / totalPower
+        featuresObject.HFn = hfPower / totalPower
+        featuresObject.LnHF = ln(hfPower)
+        return featuresObject
     }
 
+    /**
+     * Computes the psd of a given signal using the specified method.
+     * Currently only the welch method is supported.
+     *
+     * This is an close adaptation of neurokit2 and scipy's methods to
+     * compute the psd of a given signal using given frequency bands.
+     * [neurokit2](https://github.com/neuropsychology/NeuroKit)
+     * [scipy](https://github.com/scipy/scipy)
+     *
+     * @param signal The signal which is used to estimate the psd.
+     * @param frequencyBands The frequency bands to be analyzed.
+     * @param samplingRate The sampling rate of the signal.
+     * @param method The method to estimate the psd.
+     * @param maxFrequency The maximum frequency which should be returned.
+     * @param normalize Specifies whether the estimated powers should be normalized by
+     * dividing by the maximum power, so that the maximum power is 1.
+     * @return The frequencies and power estimations of those frequencies as a pair.
+     * Only those lying between the minimum frequency and maximum frequency of the specified
+     * frequency bands are returned.
+     */
     fun psd(
         signal: DoubleArray,
         frequencyBands: Collection<Pair<Double, Double>>,
@@ -337,6 +374,13 @@ object HrvFrequency {
         }
     }
 
+    /**
+     * Returns the values of an non symmetric hann window of the
+     * given size.
+     *
+     * @param length The size of the window to be returned.
+     * @return A hann window of the given size.
+     */
     fun hannWindow(length: Int): DoubleArray {
         return DoubleArray(length) {
             0.5 - 0.5 * cos((TWO_PI * it) / (length))
