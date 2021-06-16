@@ -3,7 +3,7 @@ package heartk.hrv
 import com.google.common.reflect.TypeToken
 import com.google.gson.Gson
 
-data class HRVFeatures(
+class HRVFeatures(
     var HR: DoubleArray? = null,
     var meanHR: Double? = null,
     val stdHR: Double? = null,
