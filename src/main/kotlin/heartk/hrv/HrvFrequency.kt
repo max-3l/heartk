@@ -1,13 +1,9 @@
 package heartk.hrv
 
-import heartk.FFT.FFT
+import heartk.fft.FFT
 import heartk.utils.where
 import org.apache.commons.math3.complex.Complex
-import org.apache.commons.math3.transform.DftNormalization
-import org.apache.commons.math3.transform.FastFourierTransformer
-import org.apache.commons.math3.transform.TransformType
 import org.apache.commons.math3.util.MathUtils.TWO_PI
-import java.util.Arrays
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.max

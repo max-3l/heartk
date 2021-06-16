@@ -70,7 +70,20 @@ fun DoubleArray.where(condition: (element: Double) -> Boolean): IntArray =
  * @receiver The array which is checked.
  * @return The indices where the condition is true.
  */
-fun BooleanArray.where(condition: (index: Int, element: Boolean) -> Boolean): IntArray =
+fun Iterable<Double>.where(condition: (element: Double) -> Boolean): List<Int> =
+    this.foldIndexed(mutableListOf<Int>()) { index, current, value ->
+        if (condition(value)) current.add(index)
+        current
+    }
+
+/**
+ * Returns the indices where the condition is true.
+ *
+ * @param condition The condition which needs to be true.
+ * @receiver The array which is checked.
+ * @return The indices where the condition is true.
+ */
+fun BooleanArray.whereIndexed(condition: (index: Int, element: Boolean) -> Boolean): IntArray =
     this.foldIndexed(mutableListOf<Int>()) { index, current, value ->
         if (condition(index, value)) current.add(index)
         current
@@ -84,6 +97,32 @@ fun BooleanArray.where(condition: (index: Int, element: Boolean) -> Boolean): In
  * @return The indices where the condition is true.
  */
 fun BooleanArray.where(condition: (element: Boolean) -> Boolean): IntArray =
+    this.foldIndexed(mutableListOf<Int>()) { index, current, value ->
+        if (condition(value)) current.add(index)
+        current
+    }.toIntArray()
+
+/**
+ * Returns the indices where the condition is true.
+ *
+ * @param condition The condition which needs to be true.
+ * @receiver The array which is checked.
+ * @return The indices where the condition is true.
+ */
+fun LongArray.whereIndexed(condition: (index: Int, element: Long) -> Boolean): IntArray =
+    this.foldIndexed(mutableListOf<Int>()) { index, current, value ->
+        if (condition(index, value)) current.add(index)
+        current
+    }.toIntArray()
+
+/**
+ * Returns the indices where the condition is true.
+ *
+ * @param condition The condition which needs to be true.
+ * @receiver The array which is checked.
+ * @return The indices where the condition is true.
+ */
+fun LongArray.where(condition: (element: Long) -> Boolean): IntArray =
     this.foldIndexed(mutableListOf<Int>()) { index, current, value ->
         if (condition(value)) current.add(index)
         current
@@ -150,7 +189,7 @@ fun IntArray.diff(): IntArray =
 
 fun LongArray.diff(): LongArray =
     this.foldIndexed(mutableListOf<Long>()) { index, current, element ->
-        if (index != this.size) current.add(this[index + 1] - element)
+        if (index != this.size - 1) current.add(this[index + 1] - element)
         current
     }.toLongArray()
 

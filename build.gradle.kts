@@ -12,6 +12,7 @@ plugins {
 
     // Apply the java-library plugin for API and implementation separation.
     `java-library`
+    id("com.github.johnrengelman.shadow") version "6.1.0"
 }
 
 repositories {
@@ -54,4 +55,11 @@ dependencies {
 
     // Convert object to map
     implementation("com.google.code.gson:gson:2.8.7")
+}
+
+tasks {
+    shadowJar {
+        archiveClassifier.set("")
+        minimize()
+    }
 }

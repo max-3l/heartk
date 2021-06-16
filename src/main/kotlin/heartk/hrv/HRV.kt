@@ -3,7 +3,8 @@ package heartk.hrv
 import heartk.utils.diff
 import heartk.utils.interpolateSignal
 import heartk.utils.where
-import kotlin.math.roundToInt
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
+import org.apache.commons.math3.stat.descriptive.rank.Median
 
 object HRV {
     /**
@@ -30,14 +31,22 @@ object HRV {
         featuresObject: HRVFeatures = HRVFeatures()
     ): HRVFeatures {
         val rrIntervals = getRRIntervals(peaks, samplingRate, false)
-        if (hr)
+        if (hr) {
             featuresObject.HR = HrvHr.computeHR(peaks, samplingRate)
+            featuresObject.meanHR = featuresObject.HR?.average()
+            featuresObject.medianHR = featuresObject.HR?.let { Median().evaluate(it) }
+            featuresObject.maxHR = featuresObject.HR?.max()
+            featuresObject.minHR = featuresObject.HR?.min()
+            val stats = featuresObject.HR?.let { DescriptiveStatistics(it) }
+            featuresObject.varHR = stats?.variance
+            featuresObject.rangeHR = featuresObject.minHR?.let { featuresObject.maxHR?.minus(it) }
+        }
         if (nonlinearFeatures)
             HrvNonlinear.getFeatures(rrIntervals, featuresObject)
         if (timeFeatures)
             HrvTime.getFeatures(rrIntervals, featuresObject)
         if (frequencyFeatures) {
-            val interpolatedRRIntervals = getRRIntervals(peaks, samplingRate, true, "quadratic")
+            val interpolatedRRIntervals = getRRIntervals(peaks, samplingRate, true, "b-spline-2")
             HrvFrequency.getFeatures(interpolatedRRIntervals, samplingRate, featuresObject)
         }
         return featuresObject

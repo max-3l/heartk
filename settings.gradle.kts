@@ -8,4 +8,3 @@
  */
 
 rootProject.name = "heartk"
-include("lib")

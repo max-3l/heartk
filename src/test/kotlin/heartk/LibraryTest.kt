@@ -10,12 +10,10 @@ import heartk.utils.std
 import org.junit.Assert.assertArrayEquals
 import org.junit.Before
 import java.io.File
-import java.util.Arrays
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.math.abs
 
 class PPGTest {
     var timestamps: MutableList<Long> = mutableListOf()
@@ -146,7 +144,7 @@ class PPGTest {
 
     @Test fun shouldComputeFrequencyFeatures() {
         val peaksSignal = PPG.processSignal(this.ppg.toDoubleArray(), 51.2)
-        val rri = HRV.getRRIntervals(peaksSignal, 51.2, true, "quadratic")
+        val rri = HRV.getRRIntervals(peaksSignal, 51.2, true, "b-spline-2")
         // val rri = mutableListOf<Double>()
         // this::class.java.classLoader.getResourceAsStream("rriscipy.csv")!!.bufferedReader()
         //     .forEachLine {

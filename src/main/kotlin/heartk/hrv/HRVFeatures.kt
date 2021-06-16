@@ -2,10 +2,16 @@ package heartk.hrv
 
 import com.google.common.reflect.TypeToken
 import com.google.gson.Gson
-import kotlin.reflect.KProperty1
 
 data class HRVFeatures(
     var HR: DoubleArray? = null,
+    var meanHR: Double? = null,
+    val stdHR: Double? = null,
+    var medianHR: Double? = null,
+    var varHR: Double? = null,
+    var maxHR: Double? = null,
+    var minHR: Double? = null,
+    var rangeHR: Double? = null,
     var GI: Double? = null,
     var SI: Double? = null,
     var PI: Double? = null,
@@ -54,17 +60,29 @@ data class HRVFeatures(
     var HFn: Double? = null,
     var LnHF: Double? = null
 ) {
+
+    fun asMap(): Map<String, Any> {
+        return Gson().fromJson(Gson().toJson(this), object : TypeToken<Map<String, Any>>() {}.type)
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
         other as HRVFeatures
-        val thisHR = HR
+        val ownHR = this.HR
         val otherHR = other.HR
-        if (thisHR != null) {
+        if (ownHR != null) {
             if (otherHR == null) return false
-            if (!thisHR.contentEquals(otherHR)) return false
-        } else if (other.HR != null) return false
+            if (!ownHR.contentEquals(otherHR)) return false
+        } else if (otherHR != null) return false
+        if (meanHR != other.meanHR) return false
+        if (stdHR != other.stdHR) return false
+        if (medianHR != other.medianHR) return false
+        if (varHR != other.varHR) return false
+        if (maxHR != other.maxHR) return false
+        if (minHR != other.minHR) return false
+        if (rangeHR != other.rangeHR) return false
         if (GI != other.GI) return false
         if (SI != other.SI) return false
         if (PI != other.PI) return false
@@ -118,6 +136,13 @@ data class HRVFeatures(
 
     override fun hashCode(): Int {
         var result = HR?.contentHashCode() ?: 0
+        result = 31 * result + (meanHR?.hashCode() ?: 0)
+        result = 31 * result + (stdHR?.hashCode() ?: 0)
+        result = 31 * result + (medianHR?.hashCode() ?: 0)
+        result = 31 * result + (varHR?.hashCode() ?: 0)
+        result = 31 * result + (maxHR?.hashCode() ?: 0)
+        result = 31 * result + (minHR?.hashCode() ?: 0)
+        result = 31 * result + (rangeHR?.hashCode() ?: 0)
         result = 31 * result + (GI?.hashCode() ?: 0)
         result = 31 * result + (SI?.hashCode() ?: 0)
         result = 31 * result + (PI?.hashCode() ?: 0)
@@ -166,9 +191,5 @@ data class HRVFeatures(
         result = 31 * result + (HFn?.hashCode() ?: 0)
         result = 31 * result + (LnHF?.hashCode() ?: 0)
         return result
-    }
-
-    fun asMap(): Map<String, Any> {
-        return Gson().fromJson(Gson().toJson(this), object : TypeToken<Map<String, Any>>() {}.type)
     }
 }

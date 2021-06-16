@@ -1,4 +1,4 @@
-package heartk.FFT
+package heartk.fft
 
 /*
  * Free FFT and convolution (Java)
