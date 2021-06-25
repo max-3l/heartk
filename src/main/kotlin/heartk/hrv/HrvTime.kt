@@ -24,6 +24,7 @@ object HrvTime {
      * @return A map containing the computed features.
      */
     public fun getFeatures(rrIntervals: DoubleArray, featuresObject: HRVFeatures = HRVFeatures()): HRVFeatures {
+        println("Computing time features.")
         val diff = rrIntervals.diff()
 
         featuresObject.RMSSD = sqrt(diff.map { it.pow(2) }.average())

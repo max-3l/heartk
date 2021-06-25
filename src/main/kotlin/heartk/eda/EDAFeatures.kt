@@ -1,6 +1,6 @@
 package heartk.eda
 
-class EDAFeatures(
+data class EDAFeatures(
     var skewnessEda: Double? = null,
     var kurtosisEda: Double? = null,
     var stdEda: Double? = null,
@@ -43,4 +43,55 @@ class EDAFeatures(
     var instantaneousPeaks65Eda: Double? = null,
     var instantaneousPeaks50Eda: Double? = null,
     var instantaneousPeaks25Eda: Double? = null
-)
+) {
+    companion object {
+        fun getCSVHeader(): String = "skewnessEda,kurtosisEda,stdEda,varEda,meanEda,minEda,maxEda,rangeEda,medianEda,minPhasicEda,maxPhasicEda,rangePhasicEda,skewnessPhasicEda,kurtosisPhasicEda,stdPhasicEda,varPhasicEda,meanPhasicEda,medianPhasicEda,minTonicEda,maxTonicEda,rangeTonicEda,skewnessTonicEda,kurtosisTonicEda,stdTonicEda,varTonicEda,meanTonicEda,medianTonicEda,peaksEda,meanInstantaneousPeaksEda,meanPeaksHeightEda,peaksHeight95Eda,peaksHeight85Eda,peaksHeight75Eda,peaksHeight65Eda,peaksHeight50Eda,peaksHeight25Eda,instantaneousPeaks95Eda,instantaneousPeaks85Eda,instantaneousPeaks75Eda,instantaneousPeaks65Eda,instantaneousPeaks50Eda,instantaneousPeaks25Eda"
+    }
+
+    fun toCSV(): String {
+        return arrayOf(
+            (this.skewnessEda ?: 0.0).toString(),
+            (this.kurtosisEda ?: 0.0).toString(),
+            (this.stdEda ?: 0.0).toString(),
+            (this.varEda ?: 0.0).toString(),
+            (this.meanEda ?: 0.0).toString(),
+            (this.minEda ?: 0.0).toString(),
+            (this.maxEda ?: 0.0).toString(),
+            (this.rangeEda ?: 0.0).toString(),
+            (this.medianEda ?: 0.0).toString(),
+            (this.minPhasicEda ?: 0.0).toString(),
+            (this.maxPhasicEda ?: 0.0).toString(),
+            (this.rangePhasicEda ?: 0.0).toString(),
+            (this.skewnessPhasicEda ?: 0.0).toString(),
+            (this.kurtosisPhasicEda ?: 0.0).toString(),
+            (this.stdPhasicEda ?: 0.0).toString(),
+            (this.varPhasicEda ?: 0.0).toString(),
+            (this.meanPhasicEda ?: 0.0).toString(),
+            (this.medianPhasicEda ?: 0.0).toString(),
+            (this.minTonicEda ?: 0.0).toString(),
+            (this.maxTonicEda ?: 0.0).toString(),
+            (this.rangeTonicEda ?: 0.0).toString(),
+            (this.skewnessTonicEda ?: 0.0).toString(),
+            (this.kurtosisTonicEda ?: 0.0).toString(),
+            (this.stdTonicEda ?: 0.0).toString(),
+            (this.varTonicEda ?: 0.0).toString(),
+            (this.meanTonicEda ?: 0.0).toString(),
+            (this.medianTonicEda ?: 0.0).toString(),
+            (this.peaksEda ?: 0.0).toString(),
+            (this.meanInstantaneousPeaksEda ?: 0.0).toString(),
+            (this.meanPeaksHeightEda ?: 0.0).toString(),
+            (this.peaksHeight95Eda ?: 0.0).toString(),
+            (this.peaksHeight85Eda ?: 0.0).toString(),
+            (this.peaksHeight75Eda ?: 0.0).toString(),
+            (this.peaksHeight65Eda ?: 0.0).toString(),
+            (this.peaksHeight50Eda ?: 0.0).toString(),
+            (this.peaksHeight25Eda ?: 0.0).toString(),
+            (this.instantaneousPeaks95Eda ?: 0.0).toString(),
+            (this.instantaneousPeaks85Eda ?: 0.0).toString(),
+            (this.instantaneousPeaks75Eda ?: 0.0).toString(),
+            (this.instantaneousPeaks65Eda ?: 0.0).toString(),
+            (this.instantaneousPeaks50Eda ?: 0.0).toString(),
+            (this.instantaneousPeaks25Eda ?: 0.0).toString()
+        ).joinToString(",")
+    }
+}

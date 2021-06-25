@@ -4,6 +4,7 @@ import heartk.utils.diff
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.apache.commons.math3.stat.descriptive.rank.Median
 import uk.me.berndporr.iirj.Butterworth
+import kotlin.math.max
 
 object EdaPhasicTonicFeatures {
     fun getFeatures(
@@ -64,10 +65,11 @@ object EdaPhasicTonicFeatures {
 
     fun tonicSignal(cleanEDA: List<Double>, samplingFrequency: Double): List<Double> {
         val butterworthLow = Butterworth()
-        butterworthLow.lowPass(1, samplingFrequency, 0.05)
+        butterworthLow.lowPass(2, samplingFrequency, 0.05)
+        cleanEDA.forEach { butterworthLow.filter(cleanEDA.first()) }
         return cleanEDA.map { butterworthLow.filter(it) }.let { filtered ->
             butterworthLow.reset()
-            butterworthLow.lowPass(1, samplingFrequency, 0.05)
+            filtered.forEach { butterworthLow.filter(filtered.last()) }
             filtered.asReversed().map {
                 butterworthLow.filter(it)
             }
@@ -78,10 +80,11 @@ object EdaPhasicTonicFeatures {
         // We compute the phasic component of the signal. Using BioPacks recommendation we apply
         // a filter with a highcut of 0.05 Hz.
         val butterworthHigh = Butterworth()
-        butterworthHigh.highPass(1, samplingFrequency, 0.05)
+        butterworthHigh.highPass(2, samplingFrequency, 0.05)
+        cleanEDA.forEach { butterworthHigh.filter(cleanEDA.first()) }
         return cleanEDA.map { butterworthHigh.filter(it) }.let { filtered ->
             butterworthHigh.reset()
-            butterworthHigh.highPass(1, samplingFrequency, 0.05)
+            filtered.forEach { butterworthHigh.filter(filtered.last()) }
             filtered.asReversed().map {
                 butterworthHigh.filter(it)
             }
@@ -92,9 +95,10 @@ object EdaPhasicTonicFeatures {
         // To remove noise we apply a lowpasss frequency filter with a cutoff frequency of 1 Hz
         val butterworthClear = Butterworth()
         butterworthClear.lowPass(2,samplingFrequency,1.0)
+        edaSignal.forEach { butterworthClear.filter(edaSignal.first()) }
         return edaSignal.map { butterworthClear.filter(it) }.let { filtered ->
             butterworthClear.reset()
-            butterworthClear.lowPass(2,samplingFrequency,1.0)
+            filtered.forEach { butterworthClear.filter(filtered.last()) }
             filtered.asReversed().map {
                 butterworthClear.filter(it)
             }
@@ -154,7 +158,6 @@ object EdaPhasicTonicFeatures {
         if (isRising) {
             // The signal is now falling
             if (signal[signal.size - 1] < signal[signal.size - 2]) {
-                peaks.add(signal.size - 2)
                 peaksEnd.add(signal.size - 1)
                 // Start of peak has already been set
             } else {
@@ -169,6 +172,7 @@ object EdaPhasicTonicFeatures {
             }
         }
         require(peaks.size == peaksStart.size && peaksStart.size == peaksEnd.size)
+            { "Sizes do not match. ${peaks.size} peaks, ${peaksStart.size} peaksStart, ${peaksEnd.size} peaksEnd" }
         return EDAPeaksInformation(
             signal = signal.toMutableList(),
             peaks = peaks,
@@ -193,9 +197,17 @@ object EdaPhasicTonicFeatures {
      * @return
      */
     fun filterPeaks(peaks: EDAPeaksInformation, samplingFrequency: Double): EDAPeaksInformation {
+        /**
+         * Proper choice of the amplitude criterion is essential. As the shimmer automatically adjusts
+         * it range the amplitude criterion is set to 0.1 µS.
+         *
+         * Electrodermal Activity (2012) p.156 cont.
+         */
+        val amplitudeCriterion = 0.1
         var drops = 0
+        val maxValue = peaks.signal.max() ?: 1.0
         for (index in peaks.peaks.indices) {
-            if (peaks.peaksHeight[index - drops] < 0.05) {
+            if ((peaks.peaksHeight[index - drops] / maxValue) < amplitudeCriterion) {
                 peaks.peaks.removeAt(index - drops)
                 peaks.peaksStart.removeAt(index - drops)
                 peaks.peaksEnd.removeAt(index - drops)
@@ -203,7 +215,6 @@ object EdaPhasicTonicFeatures {
                 drops++
             }
         }
-
         return peaks
     }
 }

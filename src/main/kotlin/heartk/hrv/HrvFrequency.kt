@@ -29,6 +29,7 @@ object HrvFrequency {
      * @return The feature object with the new features.
      */
     fun getFeatures(rrIntervals: DoubleArray, samplingRate: Double, featuresObject: HRVFeatures = HRVFeatures()): HRVFeatures {
+        println("Computing frequency features")
         val frequencyBands = mapOf(
             "ulf" to Pair(0.0, 0.0033),
             "vlf" to Pair(0.0033, 0.04),

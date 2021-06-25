@@ -3,7 +3,7 @@ package heartk.hrv
 import com.google.common.reflect.TypeToken
 import com.google.gson.Gson
 
-class HRVFeatures(
+data class HRVFeatures(
     var HR: DoubleArray? = null,
     var meanHR: Double? = null,
     val stdHR: Double? = null,
@@ -15,6 +15,7 @@ class HRVFeatures(
     var GI: Double? = null,
     var SI: Double? = null,
     var PI: Double? = null,
+    var AI: Double? = null,
     var C1d: Double? = null,
     var C1a: Double? = null,
     var SD1a: Double? = null,
@@ -61,8 +62,66 @@ class HRVFeatures(
     var LnHF: Double? = null
 ) {
 
+    companion object {
+        fun getCSVHeader(): String = "AI,C1a,C1d,C2a,C2d,CSI,CSI_Modified,CVI,CVNN,CVSD,Ca,Cd,GI,HF,HFn,HR,IALS,IQR,LF,LFHF,LFn,LnHF,MCVNN,MadNN,MeanNN,MedianNN,PAS,PI,PIP,PSS,RMSSD,S,SD1,SD1SD2,SD1a,SD1d,SD2,SD2a,SD2d,SDNN,SDNNa,SDNNd,SDSD,SI,ULF,VHF,VLF,pNN20,pNN50"
+    }
+
+    fun toCSV(): String  {
+        return arrayOf(
+            (this.AI ?: 0.0).toString(),
+            (this.C1a ?: 0.0).toString(),
+            (this.C1d ?: 0.0).toString(),
+            (this.C2a ?: 0.0).toString(),
+            (this.C2d ?: 0.0).toString(),
+            (this.CSI ?: 0.0).toString(),
+            (this.CSI_Modified ?: 0.0).toString(),
+            (this.CVI ?: 0.0).toString(),
+            (this.CVNN ?: 0.0).toString(),
+            (this.CVSD ?: 0.0).toString(),
+            (this.Ca ?: 0.0).toString(),
+            (this.Cd ?: 0.0).toString(),
+            (this.GI ?: 0.0).toString(),
+            (this.HF ?: 0.0).toString(),
+            (this.HFn ?: 0.0).toString(),
+            (this.HR?.average() ?: 0.0).toString(),
+            (this.IALS ?: 0.0).toString(),
+            (this.IQR ?: 0.0).toString(),
+            (this.LF ?: 0.0).toString(),
+            (this.LFHF ?: 0.0).toString(),
+            (this.LFn ?: 0.0).toString(),
+            (this.LnHF ?: 0.0).toString(),
+            (this.MCVNN ?: 0.0).toString(),
+            (this.MadNN ?: 0.0).toString(),
+            (this.MeanNN ?: 0.0).toString(),
+            (this.MedianNN ?: 0.0).toString(),
+            (this.PAS ?: 0.0).toString(),
+            (this.PI ?: 0.0).toString(),
+            (this.PIP ?: 0.0).toString(),
+            (this.PSS ?: 0.0).toString(),
+            (this.RMSSD ?: 0.0).toString(),
+            (this.S ?: 0.0).toString(),
+            (this.SD1 ?: 0.0).toString(),
+            (this.SD1SD2 ?: 0.0).toString(),
+            (this.SD1a ?: 0.0).toString(),
+            (this.SD1d ?: 0.0).toString(),
+            (this.SD2 ?: 0.0).toString(),
+            (this.SD2a ?: 0.0).toString(),
+            (this.SD2d ?: 0.0).toString(),
+            (this.SDNN ?: 0.0).toString(),
+            (this.SDNNa ?: 0.0).toString(),
+            (this.SDNNd ?: 0.0).toString(),
+            (this.SDSD ?: 0.0).toString(),
+            (this.SI ?: 0.0).toString(),
+            (this.ULF ?: 0.0).toString(),
+            (this.VHF ?: 0.0).toString(),
+            (this.VLF ?: 0.0).toString(),
+            (this.pNN20 ?: 0.0).toString(),
+            (this.pNN50 ?: 0.0).toString()
+        ).joinToString(",")
+    }
+
     fun asMap(): Map<String, Any> {
-        return Gson().fromJson(Gson().toJson(this), object : TypeToken<Map<String, Any>>() {}.type)
+        return mapOf() // Gson().fromJson(Gson().toJson(this), object : TypeToken<Map<String, Any>>() {}.type)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -70,12 +129,12 @@ class HRVFeatures(
         if (javaClass != other?.javaClass) return false
 
         other as HRVFeatures
-        val ownHR = this.HR
+        val thisHR = this.HR
         val otherHR = other.HR
-        if (ownHR != null) {
+        if (thisHR != null) {
             if (otherHR == null) return false
-            if (!ownHR.contentEquals(otherHR)) return false
-        } else if (otherHR != null) return false
+            if (!thisHR.contentEquals(otherHR)) return false
+        } else if (other.HR != null) return false
         if (meanHR != other.meanHR) return false
         if (stdHR != other.stdHR) return false
         if (medianHR != other.medianHR) return false
@@ -86,6 +145,7 @@ class HRVFeatures(
         if (GI != other.GI) return false
         if (SI != other.SI) return false
         if (PI != other.PI) return false
+        if (AI != other.AI) return false
         if (C1d != other.C1d) return false
         if (C1a != other.C1a) return false
         if (SD1a != other.SD1a) return false
@@ -146,6 +206,7 @@ class HRVFeatures(
         result = 31 * result + (GI?.hashCode() ?: 0)
         result = 31 * result + (SI?.hashCode() ?: 0)
         result = 31 * result + (PI?.hashCode() ?: 0)
+        result = 31 * result + (AI?.hashCode() ?: 0)
         result = 31 * result + (C1d?.hashCode() ?: 0)
         result = 31 * result + (C1a?.hashCode() ?: 0)
         result = 31 * result + (SD1a?.hashCode() ?: 0)

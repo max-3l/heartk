@@ -19,7 +19,7 @@ import kotlin.math.sqrt
  */
 object HrvNonlinear {
     fun getFeatures(rrIntervals: DoubleArray, featuresObject: HRVFeatures = HRVFeatures()): HRVFeatures {
-
+        println("Computing nonlinear features.")
         val N = rrIntervals.size - 1
         val sqrt2 = sqrt(2.0)
 
@@ -61,6 +61,11 @@ object HrvNonlinear {
         val m = N - noChangeIndices.size
         val b = accelerateIndices.size
         featuresObject.PI = (b.toDouble() / m.toDouble()) * 100
+
+        // AI (Area Index)
+        val denominatorAI = SAll.sum()
+        val nominatorAI = SAll.slice(decelerateIndices.toList()).sum()
+        featuresObject.AI = (nominatorAI / denominatorAI) * 100
 
         // SD1  (Short-term asymmetry)
         val sd1d = sqrt(distAll.slice(decelerateIndices.toList()).map { it.pow(2) / (N - 1) }.sum())

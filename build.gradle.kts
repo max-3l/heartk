@@ -43,23 +43,33 @@ dependencies {
     // This dependency adds filtering functionalities
     implementation("uk.me.berndporr:iirj:1.3")
 
-    // This dependency adds convolutions and FFT
-    implementation("edu.princeton.cs:algs4:1.0.3")
-
     // B Spline Interpolation
-    implementation(group="ca.umontreal.iro.simul", name="ssj", version="3.3.1")
+    // implementation(group="ca.umontreal.iro.simul", name="ssj", version="3.3.1")
+    implementation(files("libs/ssj-3.3.1-all.jar"))
 
     // This dependency adds interpolations
     // https://mvnrepository.com/artifact/com.opengamma.strata/strata-market
     implementation(group="com.opengamma.strata", name="strata-market", version="2.10.1")
 
     // Convert object to map
-    implementation("com.google.code.gson:gson:2.8.7")
+    // gson
+
+
 }
+
+configurations.all {
+    exclude("colt:colt:1.2.0")
+}
+
 
 tasks {
     shadowJar {
         archiveClassifier.set("")
         minimize()
     }
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
 }

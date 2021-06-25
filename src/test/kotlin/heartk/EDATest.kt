@@ -1,5 +1,6 @@
 package heartk
 
+import heartk.eda.EDA
 import heartk.eda.EdaPhasicTonicFeatures
 import org.junit.Test
 import java.io.File
@@ -35,5 +36,16 @@ class EDATest {
         }
         writeOutput("processedEdaPhasicTonic.csv", signalString)
         writeOutput("edaPeaks.csv", peaksString)
+    }
+
+    @Test fun shouldComputeFeatures() {
+        val eda = mutableListOf<Double>()
+        val reader = PPGTest::class.java.classLoader.getResourceAsStream("gsr_sample.csv")!!.bufferedReader()
+        reader.readLine()
+        reader.forEachLine { line ->
+            val splittedLine = line.split(",")
+            eda.add(splittedLine[1].toDouble().toDouble())
+        }
+        val features = EDA.processFeatures(eda.toDoubleArray(), 51.2)
     }
 }
